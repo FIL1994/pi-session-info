@@ -2,6 +2,14 @@
 
 ## Incremental implementation update
 
+The Recent-history slice now adds Running/Recent tabs to `/sessions`, with 10
+saved sessions initially and Show more in batches of 10. History is metadata-only,
+ordered by file modification time, lazily loaded and cached for the dialog until
+Refresh. Exact live session IDs/files and the viewer's current session are excluded
+before pagination. Unmapped processes remain a documented coverage limitation,
+not fabricated stopped/idle states. This is a narrow M4 slice, not completion of
+branch-aware content, usage accounting, or all M4 acceptance gates.
+
 The live-status vertical slice adds a private validated registry, Linux birth
 identity verification, lifecycle publishing and reconciliation. `/sessions`
 offers project-first rows, read-only details and manual refresh; uninstrumented
@@ -11,7 +19,7 @@ last activity rather than becoming idle. Existing Pi instances require explicit
 extension loading/reloading. No configuration is changed automatically.
 
 This does not claim completion of every M1–M3 acceptance gate. Uninstrumented
-fallback still recognizes exact `pi` titles only; history, watch, macOS, formal
+fallback still recognizes exact `pi` titles only; full history enrichment, watch, macOS, formal
 coverage indicators and release packaging remain future work. Synchronous small
 atomic writes are coalesced rather than using an asynchronous writer queue, so
 shutdown cannot race a pending asynchronous rename. The remaining plan describes

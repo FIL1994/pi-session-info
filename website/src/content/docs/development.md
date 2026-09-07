@@ -30,12 +30,13 @@ publishing, concurrent tool tracking, UI waiting, and model/thinking/name
 metadata. Heartbeats are 5 seconds; 20-second and future reports are stale.
 
 `/sessions` is project-first, selectable, read-only, and offers details,
-**Refresh**, and **Close**. CLI cards and JSON preserve unknowns and provenance.
+**Refresh**, and **Close**. Running/Recent tabs separate live inventory from
+saved metadata; Recent starts at 10 and offers Show more. CLI cards and JSON preserve unknowns and provenance.
 JSON includes `generatedAt` and may include activity/report timestamps, mode,
 provider, session file, and process identity.
 
 This is a milestone slice, not completion of every M1–M3 gate. It intentionally
-does not include background-agent tracking, history, watch mode, macOS, or
+does not include background-agent tracking, branch-aware history content/usage, watch mode, macOS, or
 automatic installation. Existing Pi processes must load or `/reload` the
 extension. Demo data is always synthetic. Keep personal paths out of examples.
 

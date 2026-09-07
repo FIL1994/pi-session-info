@@ -1,14 +1,14 @@
 # pi-session-info
 
-A local CLI for seeing which Pi sessions are running, what they are doing,
-and how confidently that information is known.
+A local CLI and Pi extension for seeing running sessions and their activity,
+plus recent saved sessions in the extension.
 
 **Status: Linux live-status preview.** The extension publishes private metadata
 for its own Pi session; the CLI and `/sessions` combine verified status records
 with process-only discovery. Connected sessions show their name, model, thinking
 level, and observed activity. Other processes say **Not connected**, rather than
-repeating empty diagnostic columns. No transcript reads, automatic installation,
-or network calls. Uninstrumented Node launchers may be omitted.
+repeating empty diagnostic columns. The Recent tab reads saved-session metadata
+only. No automatic installation or network calls. Uninstrumented Node launchers may be omitted.
 
 ## Pi extension
 
@@ -18,11 +18,30 @@ From this checkout, test in a new Pi session:
 pi -e ./src/extension/index.ts
 ```
 
-Then enter `/sessions`. Select a session for details, **Refresh** to rescan, or
-**Close** to dismiss. The list is a snapshot, not a watch view. To register
+Then enter `/sessions`. Use **Tab** or **←/→** to switch between **Running** and
+**Recent** (RPC clients get equivalent menu options). Recent starts with the 10
+newest saved sessions, excluding exact matches to running sessions; **Show more**
+adds another 10. Rows show the project, saved name (or session ID), and file
+modification time. Select a session for read-only details, **Refresh** to rescan,
+or **Close** to dismiss. The list is a snapshot, not a watch view. To register
 the local package persistently, explicitly run `pi install /absolute/path/to/pi-session-info`
 and reload/restart Pi. Nothing is installed automatically. The extension uses
 Node APIs and is typechecked against Pi 0.85.1; other host versions are unverified.
+
+History is loaded lazily and cached until Refresh or closing `/sessions`. It
+does not display prompts or tool outputs and does not infer idle from old files.
+Use `/name` to give sessions recognizable names, and `/resume` to continue them.
+Unconnected processes cannot always be mapped to saved files: a coverage note
+explains this limitation instead of filling historical rows with “unknown”.
+Custom session directories belonging to other, unconnected launchers cannot be
+discovered automatically.
+
+History searches `~/.pi/agent/sessions` (honoring `PI_CODING_AGENT_DIR` and
+`PI_CODING_AGENT_SESSION_DIR`), plus the viewer's session directory and directories
+reported by connected sessions. The read-only reader supports v3 files, scans at
+most 10,000 directory entries / 2,000 files, and reads a 64 KiB header window plus
+a 256 KiB tail per file. Large files can lack a discoverable saved name; partial
+coverage is reported. Symlink paths and non-regular files are skipped.
 
 ### Getting real status from existing sessions
 
@@ -58,7 +77,8 @@ reported explicitly.
 
 TypeScript + Bun for the CLI, tests, and development workflow. The Pi
 extension uses Node-compatible TypeScript and shares discovery with the CLI.
-No daemon, database, web server, or runtime dependencies; Pi is a dev type dependency.
+No daemon, database, or web server. The extension uses Pi's host TUI components;
+Pi packages are pinned development dependencies for checking and tests.
 
 This avoids maintaining a TypeScript extension alongside a second-language CLI.
 Rust or Go would offer convenient native distribution, but that tradeoff is not

@@ -2,8 +2,9 @@ import { expect, test } from "bun:test";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { registerSessionsCommand } from "../src/extension/index";
 import { demoOverview } from "../src/demo";
+import type { HistorySnapshot } from "../src/history/reader";
 
-function setup(choices: (string | undefined)[] = ["Close"], fail = false) {
+function setup(choices: (string | undefined)[] = ["Close"], fail = false, history: () => Promise<HistorySnapshot> = async () => ({ sessions: [], warnings: [] })) {
   let handler!: (args: string, ctx: ExtensionCommandContext) => Promise<void>;
   const dialogs: { title: string; choices: string[] }[] = [];
   const notifications: string[] = [];
@@ -11,7 +12,7 @@ function setup(choices: (string | undefined)[] = ["Close"], fail = false) {
   const pi = { registerCommand(name: string, command: { handler: typeof handler }) {
     expect(name).toBe("sessions"); handler = command.handler;
   } } as unknown as ExtensionAPI;
-  registerSessionsCommand(pi, { pid: -1, overview: () => { scans++; if (fail) throw Error("fixture error"); return demoOverview(); } });
+  registerSessionsCommand(pi, { history, pid: -1, overview: () => { scans++; if (fail) throw Error("fixture error"); return demoOverview(); } });
   const ctx = { hasUI: true, ui: {
     select: async (title: string, options: string[]) => { dialogs.push({ title, choices: options }); const choice = choices.shift(); return choice === "first" ? options[0] : choice; },
     notify: (message: string) => notifications.push(message),
@@ -26,6 +27,68 @@ test("sessions picker closes on Close or Escape without sending model messages",
     expect(app.dialogs[0]?.choices.join(" ")).toContain("Not connected");
     expect(app.notifications).toEqual([]);
   }
+});
+
+const saved = Array.from({ length: 25 }, (_, i) => ({
+  sessionId: `saved-${i}`, sessionFile: `/synthetic/${i}.jsonl`, cwd: "/synthetic/project",
+  name: `Task ${i}`, modifiedAt: new Date(1_000_000 - i * 1000).toISOString(),
+}));
+
+test("Recent starts at ten, Show more adds ten, and history is cached until refresh", async () => {
+  let reads = 0;
+  const app = setup(["Recent", "Show more", "Show more", "Refresh", "Running", "Close"], false, async () => {
+    reads++; return { sessions: saved, warnings: [] };
+  });
+  await app.run();
+  expect(reads).toBe(2);
+  expect(app.dialogs[1]?.title).toContain("10 of 25");
+  expect(app.dialogs[2]?.title).toContain("20 of 25");
+  expect(app.dialogs[3]?.title).toContain("25 of 25");
+  expect(app.dialogs[3]?.choices).not.toContain("Show more");
+  expect(app.dialogs[5]?.title).toContain("[Running]");
+});
+
+test("Running does not read history", async () => {
+  let reads = 0;
+  const app = setup(["Refresh", "Close"], false, async () => { reads++; throw Error("must not read"); });
+  await app.run();
+  expect(reads).toBe(0);
+});
+
+test("Recent details are read-only metadata and escape control bytes", async () => {
+  const app = setup(["Recent", "first", "Back", "Close"], false, async () => ({
+    sessions: [{ ...saved[0]!, name: "Task\u001b[31m" }], warnings: [],
+  }));
+  await app.run();
+  expect(app.dialogs[1]?.choices[0]).toContain("\\u001b");
+  expect(app.dialogs[2]?.title).toContain("File: /synthetic/0.jsonl");
+  expect(app.dialogs[2]?.title).not.toContain("\u001b");
+  expect(app.dialogs[2]?.title).not.toContain("unknown");
+});
+
+test("Recent errors and empty history retain navigation and retry", async () => {
+  let reads = 0;
+  const app = setup(["Recent", "Refresh", "Running", "Close"], false, async () => {
+    if (++reads === 1) throw Error("secret disk error");
+    return { sessions: [], warnings: [] };
+  });
+  await app.run();
+  expect(app.dialogs[1]?.title).toContain("Could not read saved sessions");
+  expect(app.dialogs[1]?.title).not.toContain("secret");
+  expect(app.dialogs[2]?.title).toContain("No recent saved sessions found");
+  expect(app.dialogs[2]?.choices).not.toContain("Show more");
+});
+
+test("Recent excludes the viewer's session before selecting the first ten", async () => {
+  const app = setup(["Recent", "Close"], false, async () => ({ sessions: saved.slice(0, 11), warnings: [] }));
+  app.ctx.sessionManager = {
+    getSessionId: () => "saved-0", getSessionFile: () => "/synthetic/0.jsonl", getSessionDir: () => "/synthetic",
+  } as unknown as ExtensionCommandContext["sessionManager"];
+  await app.run();
+  expect(app.dialogs[1]?.title).toContain("10 of 10");
+  expect(app.dialogs[1]?.choices.join("\n")).not.toContain("Task 0 ·");
+  expect(app.dialogs[1]?.choices.join("\n")).toContain("Task 10 ·");
+  expect(app.dialogs[1]?.choices).not.toContain("Show more");
 });
 
 test("picker offers read-only details and refresh", async () => {

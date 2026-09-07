@@ -16,7 +16,7 @@ export function statusLabel(row: SessionRow): string {
   return row.evidence === "inferred" ? `Inferred: ${label}` : label;
 }
 
-export function projectLabel(row: SessionRow, overview: Overview): string {
+export function projectLabel(row: { cwd: string }, overview: { sessions: readonly { cwd: string }[] }): string {
   const name = basename(row.cwd) || row.cwd;
   const collision = overview.sessions.some((other) => other.cwd !== row.cwd && (basename(other.cwd) || other.cwd) === name);
   return collision ? row.cwd : name;
