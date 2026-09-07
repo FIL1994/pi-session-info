@@ -31,47 +31,6 @@
     letter-spacing: -0.05em;
   }
 
-  .hero {
-    padding-block: clamp(2.5rem, 7vw, 5rem);
-  }
-
-  .hero h1 {
-    max-width: 13ch;
-    font-size: clamp(2.8rem, 6vw, 5rem);
-    font-weight: 750;
-    letter-spacing: -0.065em;
-    line-height: 1.04;
-    text-wrap: balance;
-  }
-
-  .hero .tagline {
-    max-width: 42ch;
-    font-size: 1.15rem;
-    line-height: 1.75;
-  }
-
-  [data-has-hero] .main-pane {
-    background-image: radial-gradient(ellipse at 85% 0%, color-mix(in srgb, var(--sl-color-accent) 12%, transparent), transparent 45rem);
-  }
-
-  .sl-link-button {
-    border-radius: 0.65rem;
-    font-weight: 600;
-  }
-
-  .card {
-    border-radius: 1rem;
-    border-color: var(--sl-color-hairline-light);
-    background: color-mix(in srgb, var(--sl-color-bg-sidebar) 65%, var(--sl-color-bg));
-    box-shadow: 0 4px 20px rgb(0 0 0 / 3%);
-  }
-
-  .card .icon {
-    border-color: var(--sl-color-accent);
-    background: var(--sl-color-accent-low);
-    color: var(--sl-color-accent-high);
-  }
-
   .sl-markdown-content h2 {
     letter-spacing: -0.035em;
   }
@@ -85,8 +44,4 @@
     box-shadow: none;
   }
 
-  /* The preview stays terminal-dark in both site themes. */
-  .inventory-preview {
-    color-scheme: dark;
-  }
 }

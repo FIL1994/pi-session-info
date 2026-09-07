@@ -1,9 +1,9 @@
 ---
 title: Pi extension
-description: Explicitly load the read-only sessions command.
+description: Load the extension and use the /sessions command.
 ---
 
-## Try it in a new session
+## Load from a checkout
 
 From the repository root, with Pi available:
 
@@ -24,9 +24,9 @@ control other sessions, or publish lifecycle status.
 The extension uses Node-compatible APIs and is typechecked against Pi **0.85.1**.
 Other host versions are unverified. Live discovery still requires Linux.
 
-## Optional persistent registration
+## Persistent installation
 
-Only if you choose to register the checkout with Pi:
+To register the checkout with Pi:
 
 ```sh
 pi install /absolute/path/to/pi-session-info
@@ -42,7 +42,7 @@ Running the CLI or building the documentation does not install the extension.
 - Discovery errors produce a notification rather than changing the conversation.
 - Multiple inspectable processes in the same working directory remain separate rows.
 
-:::note[Viewer, not instrumentation]
+## Limitations
+
 Loading this extension does not make model, activity, session identity, or tools
 known. A registry publisher and lifecycle integration are future milestones.
-:::

@@ -1,9 +1,9 @@
 ---
 title: Discovery & privacy
-description: Understand the evidence behind a row and the limits of the current observer.
+description: Linux process matching, output semantics, and data access.
 ---
 
-## What discovery does today
+## Process matching
 
 1. Enumerates numeric entries in Linux `/proc`.
 2. Restricts inspection to entries owned by the current user.
@@ -19,7 +19,7 @@ launchers can be missed; in-process subagents are not separate process rows.
 The current identifier lacks boot identity and should not be persisted as a
 globally unique instance key.
 
-## Keep these concepts separate
+## Output semantics
 
 | Concept | Current observation |
 | --- | --- |
@@ -32,7 +32,7 @@ An unknown value is not idle, zero usage, or an empty workload. A working direct
 does not uniquely identify a conversation. Recently modified transcripts would
 not prove a session is alive, and this implementation does not read them.
 
-## Privacy boundary
+## Data access
 
 The current observer reads process ownership, title, stat metadata, and working
 directory. It does not read process arguments or environments, prompts, tool

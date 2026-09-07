@@ -7,7 +7,7 @@ export default defineConfig({
     starlight({
       title: 'pi-session-info',
       customCss: ['./src/styles/global.css'],
-      description: 'Local, read-only visibility into Pi processes, with explicit limits and provenance.',
+      description: 'Pi extension and CLI for listing running Pi processes on Linux.',
       sidebar: [
         { label: 'Overview', link: '/' },
         { label: 'Getting started', link: '/getting-started/' },

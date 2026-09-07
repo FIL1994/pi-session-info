@@ -1,21 +1,30 @@
 ---
 title: Getting started
-description: Run the current CLI from a local checkout.
+description: Set up the extension and CLI from a local checkout.
 ---
 
 ## Requirements
 
 - Bun 1.3 or newer for the CLI and tests.
 - Linux with readable `/proc` for live discovery.
-- Pi if you want to use the optional `/sessions` command.
+- Pi for the `/sessions` command. The extension is typechecked against Pi 0.85.1.
 
 The package is private and not yet a published CLI. Run these commands from a
 checkout of this repository; no global `pi-session-info` executable is provided.
 
-## Install and run
+## Load the extension
 
 ```sh
 bun install
+pi -e ./src/extension/index.ts
+```
+
+Run `/sessions` in Pi to open the process list. See [Pi extension](../extension/)
+for persistent installation and command behavior.
+
+## Run the CLI
+
+```sh
 bun run start
 ```
 
@@ -29,7 +38,7 @@ For machine-readable output:
 bun run start --json
 ```
 
-## Preview without discovery
+## Demo data
 
 ```sh
 bun run demo
@@ -60,7 +69,7 @@ Permissions or other inspection failures can produce a partial inventory with a
 warning count. Processes that disappear during inspection are normally skipped.
 Do not elevate privileges merely to interpret an empty inventory as complete.
 
-### Everything says unknown
+### Activity and model are unknown
 
 This is expected. The current extension is a viewer, not a telemetry publisher.
 See [discovery and privacy](../discovery/) for what can and cannot be observed.

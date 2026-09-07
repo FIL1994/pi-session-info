@@ -50,17 +50,16 @@ bun run preview
 Pages live in `website/src/content/docs/`; navigation is configured in
 `website/astro.config.mjs`. Styling uses Tailwind CSS 4 through its Vite plugin,
 with the Starlight Tailwind compatibility stylesheet (no Tailwind preflight).
-Theme tokens and site-wide refinements live in `website/src/styles/global.css`;
-the homepage inventory component uses Tailwind utilities. Keep both light and
-dark themes readable when changing styles.
+Theme tokens and site-wide styles live in `website/src/styles/global.css`.
+Keep both light and dark themes readable when changing styles.
 
 Static output is written to `website/dist/`. No hosting
 provider is configured. Before deployment, set Astro's `site` URL and, if hosting
 under a subpath, its `base` and verify links in that deployment.
 
-## Delivery status
+## Implementation status
 
-Delivered: a synthetic preview, plain-text and JSON output, strict checks and
+Implemented: a synthetic preview, plain-text and JSON output, strict checks and
 tests, preliminary Linux fallback discovery, and the `/sessions` viewer.
 
 The preliminary fallback is **not completion of M1–M3**. Read
@@ -80,7 +79,7 @@ The next planned step is **M1**, followed by M2 as the first instrumented vertic
 slice. Watch output, historical usage totals, registry path overrides, session
 detail commands, and a published executable are not available today.
 
-## Project boundaries
+## Constraints
 
 - Local, passive observation; no session interruption, messages, or mutation.
 - No prompt, tool argument/result, auth, or environment dumps in status records.
