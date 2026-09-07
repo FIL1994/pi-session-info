@@ -3,10 +3,12 @@
 A local CLI for seeing which Pi sessions are running, what they are doing,
 and how confidently that information is known.
 
-**Status: early Linux process inventory.** The CLI and `/sessions` extension
-command list current-user processes with the exact `pi` title. Models, session
-identity, and activity remain unknown. No transcript reads, status publishing,
-automatic installation, or network calls. Node launchers may be omitted.
+**Status: Linux live-status preview.** The extension publishes private metadata
+for its own Pi session; the CLI and `/sessions` combine verified status records
+with process-only discovery. Connected sessions show their name, model, thinking
+level, and observed activity. Other processes say **Not connected**, rather than
+repeating empty diagnostic columns. No transcript reads, automatic installation,
+or network calls. Uninstrumented Node launchers may be omitted.
 
 ## Pi extension
 
@@ -16,14 +18,45 @@ From this checkout, test in a new Pi session:
 pi -e ./src/extension/index.ts
 ```
 
-Then enter `/sessions`. It opens a read-only list; Close dismisses it. To register
+Then enter `/sessions`. Select a session for details, **Refresh** to rescan, or
+**Close** to dismiss. The list is a snapshot, not a watch view. To register
 the local package persistently, explicitly run `pi install /absolute/path/to/pi-session-info`
 and reload/restart Pi. Nothing is installed automatically. The extension uses
 Node APIs and is typechecked against Pi 0.85.1; other host versions are unverified.
 
+### Getting real status from existing sessions
+
+Each Pi instance must load this extension. If it already loads this checkout,
+run `/reload` in that instance; otherwise explicitly install the local package
+first, then reload/restart. Reloading only the viewer cannot instrument other
+processes. Nothing in this project changes your Pi configuration automatically.
+
+Status tracks the observed parent Pi loop, including concurrent tools and explicit
+UI waiting. It does not claim to track independent background agents. A report
+older than 20 seconds (or in the future) is marked **Stale**, with its last observed
+activity retained. A stale report does not mean idle or dead.
+
+### Private registry
+
+Metadata is written atomically with private directory/file permissions (0700/0600).
+The registry is selected by `PI_SESSION_INFO_REGISTRY_DIR`, then a valid
+`XDG_RUNTIME_DIR`, otherwise `~/.cache/pi-session-info/run`. The CLI can override
+it with `--registry-dir PATH`. Viewer and publishers must use the same directory.
+Unsafe paths and invalid or oversized records are rejected, with read failures
+reported as warnings. Status includes session paths/names and tool names/IDs,
+never prompts, tool arguments/results, credentials, or environment dumps.
+
+Live records are matched against Linux boot identity and process start ticks,
+not PID or working directory alone. Registry files left by crashes are ignored
+when the process identity no longer matches; reading does not delete them.
+The local trust boundary includes other processes running as your user; this is
+not an authentication protocol against a malicious same-user process. Reads are
+bounded to 128 directory entries and 128 KiB per record, with skipped coverage
+reported explicitly.
+
 ## Stack
 
-TypeScript + Bun for the CLI, tests, and development workflow. The planned Pi
+TypeScript + Bun for the CLI, tests, and development workflow. The Pi
 extension uses Node-compatible TypeScript and shares discovery with the CLI.
 No daemon, database, web server, or runtime dependencies; Pi is a dev type dependency.
 
@@ -43,7 +76,7 @@ bun run start --help
 bun run check
 ```
 
-Without `--demo`, the CLI reads Linux `/proc` and lists matching live processes.
+Without `--demo`, the CLI combines Linux `/proc` with the private status registry.
 Demo paths, IDs, models, and PIDs are fictional.
 
 ## Documentation website

@@ -1,16 +1,13 @@
 ---
 title: Getting started
-description: Set up the extension and CLI from a local checkout.
+description: Set up live status from a local checkout.
 ---
 
 ## Requirements
 
-- Bun 1.3 or newer for the CLI and tests.
+- Bun 1.3 or newer.
 - Linux with readable `/proc` for live discovery.
-- Pi for the `/sessions` command. The extension is typechecked against Pi 0.85.1.
-
-The package is private and not yet a published CLI. Run these commands from a
-checkout of this repository; no global `pi-session-info` executable is provided.
+- Pi for `/sessions` (typechecked against Pi 0.85.1).
 
 ## Load the extension
 
@@ -19,57 +16,32 @@ bun install
 pi -e ./src/extension/index.ts
 ```
 
-Run `/sessions` in Pi to open the process list. See [Pi extension](../extension/)
-for persistent installation and command behavior.
+Run `/sessions`. Existing Pi processes must each load the extension; run
+`/reload` in instances that already load it. No automatic installation occurs.
 
 ## Run the CLI
 
 ```sh
 bun run start
-```
-
-The overview contains PID, status, evidence, freshness, model, directory, and
-tools columns. Current live rows have unknown activity and freshness, unmatched
-evidence, and no known model or tools.
-
-For machine-readable output:
-
-```sh
 bun run start --json
+bun run start --registry-dir /path/to/registry
 ```
 
-## Demo data
+The CLI combines verified registry records with limited Linux fallback. Connected
+status reports parent lifecycle activity, model, thinking, name, and concurrent
+tools. Reports older than 20 seconds or dated in the future are stale.
+
+## Demo
 
 ```sh
 bun run demo
 bun run start --demo --json
 ```
 
-`--demo` bypasses process discovery and returns synthetic data. Its `extension`
-evidence and known activity values illustrate the presentation, not implemented
-telemetry. The demo warning still says live discovery is unimplemented; this is
-an outdated fixture message, not the behavior of the default CLI.
+Demo output is always synthetic and does not represent live discovery.
 
-## Troubleshooting
+## Limitations
 
-### No sessions appear
-
-An empty result means no inspectable matching processes were found, not that no
-Pi conversations exist. Only the current user's exact `pi` process titles match.
-Node launchers and in-process subagents may be omitted. Read the snapshot warnings.
-
-### Discovery fails on macOS or Windows
-
-Live discovery currently supports Linux only. Use `--demo` to preview the output;
-it does not provide a fallback live inventory.
-
-### Some process entries could not be inspected
-
-Permissions or other inspection failures can produce a partial inventory with a
-warning count. Processes that disappear during inspection are normally skipped.
-Do not elevate privileges merely to interpret an empty inventory as complete.
-
-### Activity and model are unknown
-
-This is expected. The current extension is a viewer, not a telemetry publisher.
-See [discovery and privacy](../discovery/) for what can and cannot be observed.
+There is no background-agent tracking, history, watch mode, macOS support, or
+automatic installation. Fallback recognizes only the exact `pi` title and labels
+those rows **Not connected**. See [Discovery & privacy](../discovery/).

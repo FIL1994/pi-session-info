@@ -8,7 +8,7 @@ export function discoverSessions(procRoot = "/proc", platform = process.platform
     schemaVersion: 1,
     source: "live",
     sessions: [],
-    warnings: ["Fallback discovery: exact 'pi' process titles only. Session identity, model, and activity are unknown; Node launchers and in-process subagents may be omitted."],
+    warnings: ["Process-only discovery recognizes exact 'pi' titles; unconnected Node launchers and in-process agents may be omitted."],
   };
   let denied = 0;
   for (const pid of readdirSync(procRoot).filter((entry) => /^\d+$/.test(entry))) {

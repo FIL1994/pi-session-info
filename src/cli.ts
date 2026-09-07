@@ -1,7 +1,7 @@
 import { parseArgs } from "node:util";
 import { demoOverview } from "./demo";
 import { formatOverview } from "./format";
-import { discoverSessions } from "./discover";
+import { liveOverview } from "./inventory";
 
 export interface CommandResult {
   code: number;
@@ -19,16 +19,17 @@ export function runCli(args: string[]): CommandResult {
         help: { type: "boolean", short: "h" },
         demo: { type: "boolean" },
         json: { type: "boolean" },
+        "registry-dir": { type: "string" },
       },
     });
     if (values.help) {
       return {
         code: 0,
-        stdout: "Usage: bun run start [--demo] [--json]\n\nLinux process discovery; activity is unknown. --demo uses synthetic data.",
+        stdout: "Usage: bun run start [--demo] [--json] [--registry-dir PATH]\n\nLinux process discovery with extension-published live status. --demo uses synthetic data.",
         stderr: "",
       };
     }
-    const overview = values.demo ? demoOverview() : discoverSessions();
+    const overview = values.demo ? demoOverview() : liveOverview(values["registry-dir"] === undefined ? {} : { registryDir: values["registry-dir"] });
     return {
       code: 0,
       stdout: values.json ? JSON.stringify(overview, null, 2) : formatOverview(overview),

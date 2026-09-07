@@ -15,6 +15,12 @@ export interface SessionRow {
   evidence: Evidence;
   freshness: Freshness;
   activeTools: string[];
+  processIdentity?: string;
+  heartbeatAt?: string;
+  activityAt?: string;
+  sessionFile?: string | null;
+  provider?: string | null;
+  mode?: string | null;
 }
 
 export interface Overview {
@@ -22,4 +28,5 @@ export interface Overview {
   source: "demo" | "live";
   sessions: SessionRow[];
   warnings: string[];
+  generatedAt?: string;
 }

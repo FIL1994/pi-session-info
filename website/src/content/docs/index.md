@@ -1,51 +1,37 @@
 ---
 title: pi-session-info
-description: Pi extension and CLI for listing running Pi processes on Linux.
+description: Local live-status views for running Pi sessions on Linux.
 ---
 
-`pi-session-info` adds a `/sessions` command to Pi that lists running Pi
-processes on Linux. It shows process IDs and working directories in a read-only
-list. The same inventory is available through a Bun CLI.
+`pi-session-info` provides a read-only `/sessions` view and Bun CLI for local
+Pi status. Instrumented sessions publish private metadata; uninstrumented
+processes use a deliberately limited fallback.
 
-## Load the extension
-
-From the repository root:
+## Quick start
 
 ```sh
 bun install
 pi -e ./src/extension/index.ts
 ```
 
-In Pi, run:
+Run `/sessions` in Pi. The project-first list has selectable rows, details,
+**Refresh**, and **Close**. It is a snapshot, not a watch view. Existing Pi
+processes must each load the extension; use `/reload` in an already configured
+instance. Nothing is installed automatically.
 
-```text
-/sessions
-```
+The CLI is available with `bun run start` or `bun run start --json`. Demo data
+is always synthetic and never live discovery.
 
-Select **Close** to dismiss the list. The command takes no arguments and does
-not add its output to model context.
+## Current scope
 
-For persistent installation and compatibility details, see
-[Pi extension](./extension/).
+- Linux process identity matches PID, boot identity, and start ticks exactly.
+- The publisher observes the parent lifecycle, concurrent tool names/IDs,
+  explicit UI waiting, model, thinking level, and session name.
+- Heartbeats run every 5 seconds; reports older than 20 seconds or from the
+  future are **Stale**. Stale reports retain last observed activity; they do
+  not imply idle or death.
+- There is no background-agent tracking, history, watch mode, macOS support, or
+  automatic installation.
 
-## Run the CLI
-
-```sh
-bun run start
-bun run start --json
-```
-
-The CLI requires Bun 1.3 or newer. See [CLI reference](./cli/) for flags,
-output fields, and exit codes.
-
-## Current limitations
-
-- Linux only; discovery requires readable `/proc`.
-- Matches current-user processes with the exact `pi` title. Node launchers and
-  in-process subagents may be omitted.
-- Session ID, model, thinking level, activity, and active tools are not observed.
-- No transcript reads, lifecycle telemetry, or watch mode.
-
-Loading the extension does not enable additional telemetry. Both interfaces use
-the same process discovery code. See [Discovery & privacy](./discovery/) for
-matching rules and [Development & roadmap](./development/) for planned work.
+See [CLI reference](./cli/), [Pi extension](./extension/), and
+[Discovery & privacy](./discovery/).

@@ -9,12 +9,13 @@ test("help explains the scaffold boundary", () => {
 });
 
 
-test("demo renders provenance and unknowns", () => {
+test("demo renders readable status without diagnostic columns", () => {
   const result = runCli(["--demo"]);
   expect(result.code).toBe(0);
   expect(result.stdout).toContain("Pi sessions (demo)");
-  expect(result.stdout).toContain("unmatched");
-  expect(result.stdout).toContain("unknown");
+  expect(result.stdout).toContain("Not connected");
+  expect(result.stdout).toContain("Using tools");
+  expect(result.stdout).not.toContain("EVIDENCE");
 });
 
 test("JSON output is a versioned, explicitly synthetic envelope", () => {

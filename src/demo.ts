@@ -5,7 +5,7 @@ export function demoOverview(): Overview {
   return {
     schemaVersion: 1,
     source: "demo",
-    warnings: ["Synthetic demo data; live discovery is not implemented."],
+    warnings: ["Synthetic demo data; not live discovery."],
     sessions: [
       {
         instanceId: "demo-composer",

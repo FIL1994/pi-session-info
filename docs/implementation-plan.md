@@ -2,16 +2,25 @@
 
 ## Incremental implementation update
 
-The CLI now provides conservative Linux process discovery, shared with a Pi
-extension `/sessions` command. This is a preliminary fallback, not completion of
-M1–M3: exact `pi` titles only, no registry, no history, no activity inference.
-The extension opens a read-only UI list without injecting anything into model
-context. The remaining plan below describes the target architecture.
+The live-status vertical slice adds a private validated registry, Linux birth
+identity verification, lifecycle publishing and reconciliation. `/sessions`
+offers project-first rows, read-only details and manual refresh; uninstrumented
+processes use a single **Not connected** label. CLI JSON preserves unknowns and
+provenance. Heartbeats are fresh for 20 seconds; stale observations retain their
+last activity rather than becoming idle. Existing Pi instances require explicit
+extension loading/reloading. No configuration is changed automatically.
 
-Extend `/sessions` in M2 to use the shared reconciled inventory, and later add a
-session detail picker in M4. Keep slash commands user-facing; no agent tool is
-needed. Test command registration, UI dismissal, no-UI mode, errors, and multiple
-same-cwd instances. Do not install into user settings without explicit permission.
+This does not claim completion of every M1–M3 acceptance gate. Uninstrumented
+fallback still recognizes exact `pi` titles only; history, watch, macOS, formal
+coverage indicators and release packaging remain future work. Synchronous small
+atomic writes are coalesced rather than using an asynchronous writer queue, so
+shutdown cannot race a pending asynchronous rename. The remaining plan describes
+the full target architecture and acceptance gates.
+
+`/sessions` uses the shared reconciled inventory and metadata-only detail picker;
+M4 can extend details with saved history. Keep slash commands user-facing; no
+agent tool is needed. Test command registration, UI dismissal, no-UI mode, errors,
+and multiple same-cwd instances. Do not install into user settings without permission.
 
 ## 1. Goal and scope
 
@@ -29,7 +38,8 @@ daemon, or database. Do not automatically modify Pi settings during installation
 - [x] Runnable synthetic table and versioned JSON preview.
 - [x] Initial presentation types and terminal-control-byte escaping.
 - [x] Preliminary Linux fallback and `/sessions` extension command.
-- [ ] Reliable process identity, registry publishing, and transcript parsing.
+- [x] Registry-backed process identity and lifecycle publishing (live-status preview).
+- [ ] Transcript parsing and full milestone acceptance coverage.
 - [ ] Watch mode, packaging, or installation into Pi.
 
 The demo envelope is a starting contract, not a frozen public protocol. Finalize
@@ -344,4 +354,5 @@ Useful upstream references (verify against the version being targeted):
 - https://github.com/earendil-works/pi-mono/blob/main/packages/coding-agent/docs/session-format.md
 - https://github.com/earendil-works/pi-mono/blob/main/packages/coding-agent/docs/packages.md
 
-Recommended next task: **M1 only**, then M2 as the first end-to-end live slice.
+Next: validate the live slice in multiple explicitly loaded Pi instances, then
+close remaining M1–M3 acceptance gaps before adding history or watch mode.
