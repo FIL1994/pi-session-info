@@ -5,15 +5,9 @@ import { terminalText } from "../src/format";
 test("help explains the scaffold boundary", () => {
   const result = runCli(["--help"]);
   expect(result.code).toBe(0);
-  expect(result.stdout).toContain("Scaffold only");
+  expect(result.stdout).toContain("Linux process discovery");
 });
 
-test("no arguments cannot masquerade as an empty live inventory", () => {
-  const result = runCli([]);
-  expect(result.code).toBe(2);
-  expect(result.stdout).toBe("");
-  expect(result.stderr).toContain("not implemented");
-});
 
 test("demo renders provenance and unknowns", () => {
   const result = runCli(["--demo"]);

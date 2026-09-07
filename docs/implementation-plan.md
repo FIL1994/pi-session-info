@@ -1,5 +1,18 @@
 # Implementation plan: pi-session-info
 
+## Incremental implementation update
+
+The CLI now provides conservative Linux process discovery, shared with a Pi
+extension `/sessions` command. This is a preliminary fallback, not completion of
+M1–M3: exact `pi` titles only, no registry, no history, no activity inference.
+The extension opens a read-only UI list without injecting anything into model
+context. The remaining plan below describes the target architecture.
+
+Extend `/sessions` in M2 to use the shared reconciled inventory, and later add a
+session detail picker in M4. Keep slash commands user-facing; no agent tool is
+needed. Test command registration, UI dismissal, no-UI mode, errors, and multiple
+same-cwd instances. Do not install into user settings without explicit permission.
+
 ## 1. Goal and scope
 
 Build a small local CLI that answers: which Pi instances are alive, which session
@@ -15,7 +28,8 @@ daemon, or database. Do not automatically modify Pi settings during installation
 - [x] Bun/TypeScript project, strict checking, and unit tests.
 - [x] Runnable synthetic table and versioned JSON preview.
 - [x] Initial presentation types and terminal-control-byte escaping.
-- [ ] Live process discovery, registry, extension, or transcript parsing.
+- [x] Preliminary Linux fallback and `/sessions` extension command.
+- [ ] Reliable process identity, registry publishing, and transcript parsing.
 - [ ] Watch mode, packaging, or installation into Pi.
 
 The demo envelope is a starting contract, not a frozen public protocol. Finalize

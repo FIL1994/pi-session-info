@@ -1,6 +1,7 @@
 import { parseArgs } from "node:util";
 import { demoOverview } from "./demo";
 import { formatOverview } from "./format";
+import { discoverSessions } from "./discover";
 
 export interface CommandResult {
   code: number;
@@ -23,14 +24,11 @@ export function runCli(args: string[]): CommandResult {
     if (values.help) {
       return {
         code: 0,
-        stdout: "Usage: bun run start --demo [--json]\n\nScaffold only. --demo uses synthetic data.\nLive discovery, watch mode, and the Pi extension are planned.",
+        stdout: "Usage: bun run start [--demo] [--json]\n\nLinux process discovery; activity is unknown. --demo uses synthetic data.",
         stderr: "",
       };
     }
-    if (!values.demo) {
-      return { code: 2, stdout: "", stderr: "Live discovery is not implemented. Use --demo or --help." };
-    }
-    const overview = demoOverview();
+    const overview = values.demo ? demoOverview() : discoverSessions();
     return {
       code: 0,
       stdout: values.json ? JSON.stringify(overview, null, 2) : formatOverview(overview),

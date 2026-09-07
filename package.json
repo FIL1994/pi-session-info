@@ -4,7 +4,12 @@
   "private": true,
   "description": "Local visibility into running Pi sessions",
   "type": "module",
-  "engines": { "bun": ">=1.3.0" },
+  "pi": {
+    "extensions": ["./src/extension/index.ts"]
+  },
+  "engines": {
+    "bun": ">=1.3.0"
+  },
   "scripts": {
     "start": "bun src/cli.ts",
     "demo": "bun src/cli.ts --demo",
@@ -13,6 +18,7 @@
     "check": "bun run typecheck && bun test"
   },
   "devDependencies": {
+    "@earendil-works/pi-coding-agent": "0.85.1",
     "@types/bun": "^1.3.0",
     "typescript": "^5.9.3"
   }

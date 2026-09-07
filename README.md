@@ -3,15 +3,29 @@
 A local CLI for seeing which Pi sessions are running, what they are doing,
 and how confidently that information is known.
 
-**Status: scaffold, not a working session monitor.** The CLI currently renders
-synthetic examples only. It does not read processes or transcripts, install an
-extension, write status records, or contact any service.
+**Status: early Linux process inventory.** The CLI and `/sessions` extension
+command list current-user processes with the exact `pi` title. Models, session
+identity, and activity remain unknown. No transcript reads, status publishing,
+automatic installation, or network calls. Node launchers may be omitted.
+
+## Pi extension
+
+From this checkout, test in a new Pi session:
+
+```sh
+pi -e ./src/extension/index.ts
+```
+
+Then enter `/sessions`. It opens a read-only list; Close dismisses it. To register
+the local package persistently, explicitly run `pi install /absolute/path/to/pi-session-info`
+and reload/restart Pi. Nothing is installed automatically. The extension uses
+Node APIs and is typechecked against Pi 0.85.1; other host versions are unverified.
 
 ## Stack
 
 TypeScript + Bun for the CLI, tests, and development workflow. The planned Pi
-extension will use Node-compatible TypeScript and share small contracts with
-the CLI. No daemon, database, web server, or runtime dependencies in the scaffold.
+extension uses Node-compatible TypeScript and shares discovery with the CLI.
+No daemon, database, web server, or runtime dependencies; Pi is a dev type dependency.
 
 This avoids maintaining a TypeScript extension alongside a second-language CLI.
 Rust or Go would offer convenient native distribution, but that tradeoff is not
@@ -29,7 +43,7 @@ bun run start --help
 bun run check
 ```
 
-Without `--demo`, the scaffold exits with an explicit not-implemented error.
+Without `--demo`, the CLI reads Linux `/proc` and lists matching live processes.
 Demo paths, IDs, models, and PIDs are fictional.
 
 ## Layout
