@@ -1,0 +1,19 @@
+{
+  "name": "pi-session-info",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Local visibility into running Pi sessions",
+  "type": "module",
+  "engines": { "bun": ">=1.3.0" },
+  "scripts": {
+    "start": "bun src/cli.ts",
+    "demo": "bun src/cli.ts --demo",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "check": "bun run typecheck && bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.0",
+    "typescript": "^5.9.3"
+  }
+}
