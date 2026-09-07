@@ -3,12 +3,25 @@ import { liveOverview } from "../inventory";
 import { formatDetails, projectLabel, statusLabel, terminalText } from "../format";
 import { registerLifecycle } from "./lifecycle";
 
+/** A blocking prompt cannot resolve faster than this; instant returns mean nobody is answering. */
+const MIN_PROMPT_MS = 5;
+const MAX_IMMEDIATE_PROMPTS = 50;
+
+export interface SessionsDeps {
+  overview?: typeof liveOverview;
+  pid?: number;
+  now?: () => number;
+}
+
 export default function sessionInfo(pi: ExtensionAPI) {
   registerLifecycle(pi);
   registerSessionsCommand(pi);
 }
 
-export function registerSessionsCommand(pi: ExtensionAPI, dependencies = { overview: liveOverview, pid: process.pid }) {
+export function registerSessionsCommand(pi: ExtensionAPI, dependencies: SessionsDeps = {}) {
+  const inventory = dependencies.overview ?? liveOverview;
+  const self = dependencies.pid ?? process.pid;
+  const clock = dependencies.now ?? Date.now;
   pi.registerCommand("sessions", {
     description: "List Pi sessions with live status and process-only fallback",
     handler: async (args, ctx) => {
@@ -18,8 +31,9 @@ export function registerSessionsCommand(pi: ExtensionAPI, dependencies = { overv
       }
       if (!ctx.hasUI) return;
       try {
+        let immediate = 0;
         for (;;) {
-          const overview = dependencies.overview();
+          const overview = inventory();
           const connected = overview.sessions.filter((row) => row.evidence === "extension" && row.freshness === "fresh").length;
           const stale = overview.sessions.filter((row) => row.evidence === "extension" && row.freshness !== "fresh").length;
           const title = [
@@ -31,10 +45,17 @@ export function registerSessionsCommand(pi: ExtensionAPI, dependencies = { overv
           ].map(terminalText).join("\n");
           const details = overview.sessions.map((row, index) => terminalText([
             `${index + 1}. ${projectLabel(row, overview)}`, row.name, statusLabel(row), row.model,
-            `PID ${row.pid}${row.pid === dependencies.pid ? " (this session)" : ""}`,
+            `PID ${row.pid}${row.pid === self ? " (this session)" : ""}`,
           ].filter(Boolean).join(" · ")));
+          const started = clock();
           const choice = await ctx.ui.select(title, [...details, "Refresh", "Close"]);
           if (!choice || choice === "Close") break;
+          // Never rescan /proc in a hot loop when the host stops blocking on selection.
+          immediate = clock() - started < MIN_PROMPT_MS ? immediate + 1 : 0;
+          if (immediate >= MAX_IMMEDIATE_PROMPTS) {
+            ctx.ui.notify("Closed /sessions: the selection prompt stopped waiting for input.", "warning");
+            break;
+          }
           const row = overview.sessions[details.indexOf(choice)];
           if (row) await ctx.ui.select(formatDetails(row), ["Back"]);
         }

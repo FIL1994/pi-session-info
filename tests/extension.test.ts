@@ -40,3 +40,19 @@ test("invalid args, no UI, and discovery errors are safe", async () => {
   const headless = setup(); headless.ctx.hasUI = false; await headless.run(); expect(headless.scans()).toBe(0);
   const failed = setup([], true); await failed.run(); expect(failed.notifications).toHaveLength(1);
 });
+
+test("picker stops instead of rescanning when the prompt no longer blocks", async () => {
+  let handler!: (args: string, ctx: ExtensionCommandContext) => Promise<void>;
+  const notifications: string[] = [];
+  let scans = 0;
+  const pi = { registerCommand(_name: string, command: { handler: typeof handler }) { handler = command.handler; } } as unknown as ExtensionAPI;
+  registerSessionsCommand(pi, { pid: -1, now: () => 0, overview: () => { scans++; return demoOverview(); } });
+  const ctx = { hasUI: true, ui: {
+    // A misbehaving host that answers "Refresh" forever without ever waiting for input.
+    select: async (_title: string, _options: string[]) => "Refresh",
+    notify: (message: string) => notifications.push(message),
+  } } as unknown as ExtensionCommandContext;
+  await handler("", ctx);
+  expect(scans).toBeLessThanOrEqual(51);
+  expect(notifications).toEqual(["Closed /sessions: the selection prompt stopped waiting for input."]);
+});
