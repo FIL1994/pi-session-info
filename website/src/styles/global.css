@@ -1,0 +1,92 @@
+@layer base, starlight, theme, components, utilities;
+
+@import '@astrojs/starlight-tailwind';
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@theme {
+  --color-accent-50: var(--color-teal-50);
+  --color-accent-100: var(--color-teal-100);
+  --color-accent-200: var(--color-teal-200);
+  --color-accent-300: var(--color-teal-300);
+  --color-accent-400: var(--color-teal-400);
+  --color-accent-500: var(--color-teal-500);
+  --color-accent-600: var(--color-teal-600);
+  --color-accent-700: var(--color-teal-700);
+  --color-accent-800: var(--color-teal-800);
+  --color-accent-900: var(--color-teal-900);
+  --color-accent-950: var(--color-teal-950);
+}
+
+@layer components {
+  :root {
+    --sl-content-width: 48rem;
+    --sl-font: ui-sans-serif, system-ui, sans-serif;
+    --sl-font-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  }
+
+  .site-title {
+    font-family: var(--sl-font-mono);
+    font-size: 1.05rem;
+    letter-spacing: -0.05em;
+  }
+
+  .hero {
+    padding-block: clamp(2.5rem, 7vw, 5rem);
+  }
+
+  .hero h1 {
+    max-width: 13ch;
+    font-size: clamp(2.8rem, 6vw, 5rem);
+    font-weight: 750;
+    letter-spacing: -0.065em;
+    line-height: 1.04;
+    text-wrap: balance;
+  }
+
+  .hero .tagline {
+    max-width: 42ch;
+    font-size: 1.15rem;
+    line-height: 1.75;
+  }
+
+  [data-has-hero] .main-pane {
+    background-image: radial-gradient(ellipse at 85% 0%, color-mix(in srgb, var(--sl-color-accent) 12%, transparent), transparent 45rem);
+  }
+
+  .sl-link-button {
+    border-radius: 0.65rem;
+    font-weight: 600;
+  }
+
+  .card {
+    border-radius: 1rem;
+    border-color: var(--sl-color-hairline-light);
+    background: color-mix(in srgb, var(--sl-color-bg-sidebar) 65%, var(--sl-color-bg));
+    box-shadow: 0 4px 20px rgb(0 0 0 / 3%);
+  }
+
+  .card .icon {
+    border-color: var(--sl-color-accent);
+    background: var(--sl-color-accent-low);
+    color: var(--sl-color-accent-high);
+  }
+
+  .sl-markdown-content h2 {
+    letter-spacing: -0.035em;
+  }
+
+  .starlight-aside {
+    border-radius: 0 0.75rem 0.75rem 0;
+  }
+
+  .pagination-links a {
+    border-radius: 0.75rem;
+    box-shadow: none;
+  }
+
+  /* The preview stays terminal-dark in both site themes. */
+  .inventory-preview {
+    color-scheme: dark;
+  }
+}

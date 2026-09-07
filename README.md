@@ -46,7 +46,20 @@ bun run check
 Without `--demo`, the CLI reads Linux `/proc` and lists matching live processes.
 Demo paths, IDs, models, and PIDs are fictional.
 
-## Layout
+## Documentation website
+
+The Astro + Starlight documentation site lives in `website/` and has separate dependencies.
+
+```sh
+cd website
+bun install
+bun run dev
+```
+
+Run `bun run check` and `bun run build` inside `website/` to validate the site.
+Use `bun run preview` to preview its static build locally.
+
+## Repository layout
 
 ```text
 src/cli.ts          Argument parsing and entry point
