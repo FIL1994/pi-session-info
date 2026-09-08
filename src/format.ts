@@ -8,6 +8,19 @@ export function terminalText(value: string): string {
   );
 }
 
+/** Presentation only: saved age never implies idle or stopped activity. */
+export function relativeTime(value: string, now: number): string {
+  const time = Date.parse(value);
+  if (!Number.isFinite(time) || !Number.isFinite(now)) return "Date unavailable";
+  const seconds = Math.floor(Math.abs(now - time) / 1000);
+  if (seconds < 60) return time > now ? "in less than a minute" : "just now";
+  const [size, unit] = seconds < 3600 ? [60, "minute"] as const
+    : seconds < 86400 ? [3600, "hour"] as const : [86400, "day"] as const;
+  const count = Math.floor(seconds / size);
+  const label = `${count} ${unit}${count === 1 ? "" : "s"}`;
+  return time > now ? `in ${label}` : `${label} ago`;
+}
+
 export function statusLabel(row: SessionRow): string {
   if (row.evidence === "unmatched") return "Not connected";
   const labels = { working: "Working", tool: "Using tools", "waiting-user": "Waiting for you", idle: "Idle", unknown: "Activity unavailable" };

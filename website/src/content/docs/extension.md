@@ -18,6 +18,15 @@ file modification time; no prompt or tool output excerpts are displayed.
 History is cached until Refresh or closing the command. The list is a snapshot, not a watch view,
 and does not control sessions or add output to model context.
 
+Rows show relative saved ages; details retain exact dates. Use **Pin session** or
+**Unpin session** in details to save favorites. **Pinned only** in Recent filters
+before the 10-row limit, remains newest-first, and still excludes running sessions.
+Pins are stored separately under `$XDG_STATE_HOME/pi-session-info/pins` (default
+`~/.local/state/pi-session-info/pins`), not in transcripts. Missing or unscanned
+sessions do not appear merely because they are pinned.
+
+Search, Current Folder / All filtering, and resuming remain in native **`/resume`**.
+
 Every existing Pi process must load the extension to publish live status. If it
 already loads this checkout, run `/reload` there; reloading only the viewer does
 not instrument other processes. Nothing changes Pi configuration automatically.

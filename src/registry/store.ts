@@ -41,6 +41,9 @@ function prepareDir(dir: string, create: boolean): void {
   }
 }
 
+// Shared private-directory checks for extension-owned persistent metadata.
+export { prepareDir as preparePrivateDir };
+
 export function resolveRegistryDir(env: NodeJS.ProcessEnv = process.env, home = homedir()): string {
   if (env.PI_SESSION_INFO_REGISTRY_DIR) {
     if (!env.PI_SESSION_INFO_REGISTRY_DIR.startsWith("/")) throw new Error("Registry path must be absolute");

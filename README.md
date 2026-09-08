@@ -28,6 +28,21 @@ the local package persistently, explicitly run `pi install /absolute/path/to/pi-
 and reload/restart Pi. Nothing is installed automatically. The extension uses
 Node APIs and is typechecked against Pi 0.85.1; other host versions are unverified.
 
+Recent rows use friendly ages such as **saved 2 hours ago**; details retain the
+exact timestamp. **Pin session / Unpin session** in Running or Recent details
+stores a favorite without changing the session itself. Recent marks pins with
+**★** and offers **Pinned only / All recent**. Both views stay newest-first and
+exclude matched running sessions. Pins outside the scanned history (including
+deleted files or undiscovered custom directories) are not shown; running pins
+appear in Recent once the session is no longer running and history is refreshed.
+
+Pins persist across Pi instances in `$XDG_STATE_HOME/pi-session-info/pins`, or
+`~/.local/state/pi-session-info/pins`. Only versioned session IDs are stored,
+with private permissions and one atomic file per session. No transcripts or Pi
+settings are modified. Pin storage is created only when you explicitly pin.
+Use native **`/resume`** for search, Current Folder / All filtering, and resuming;
+the extension does not duplicate those controls or automatically switch sessions.
+
 History is loaded lazily and cached until Refresh or closing `/sessions`. It
 does not display prompts or tool outputs and does not infer idle from old files.
 Use `/name` to give sessions recognizable names, and `/resume` to continue them.
