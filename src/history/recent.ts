@@ -7,6 +7,12 @@ function fileKey(file: string): string {
   try { return realpathSync(file); } catch { return resolve(file); }
 }
 
+/** Exact file identity only; absence is not evidence that a parent is gone. */
+export function parentMatch(child: SavedSession, sessions: readonly SavedSession[]): "matched" | "unavailable" | "unknown" {
+  if (!child.parentSessionFile) return "unknown";
+  return sessions.some((candidate) => fileKey(candidate.sessionFile) === fileKey(child.parentSessionFile!)) ? "matched" : "unavailable";
+}
+
 /** History is persisted metadata, never evidence of idle or stopped activity. */
 export function recentSessions(history: HistorySnapshot, live: Overview, current?: {
   sessionId?: string | undefined; sessionFile?: string | undefined;
@@ -33,8 +39,12 @@ export function recentSessions(history: HistorySnapshot, live: Overview, current
   ] };
 }
 
-export function savedDetails(row: SavedSession): string[] {
+export function savedDetails(row: SavedSession, snapshot?: readonly SavedSession[]): string[] {
   return [row.name ?? "Saved session", `Directory: ${row.cwd}`, `Session: ${row.sessionId}`,
     `File: ${row.sessionFile}`, `Last saved (file modified): ${row.modifiedAt}`,
+    `Derived from: ${row.parentSessionFile ?? "Unknown (no parent metadata)"}`,
+    ...(snapshot && row.parentSessionFile ? [parentMatch(row, snapshot) === "matched"
+      ? "Parent file matched in saved snapshot (not evidence of liveness)."
+      : "Parent file not in saved snapshot (may be outside discovery coverage)."] : []),
     "Saved metadata only; no live activity is inferred. Use /resume to continue a session."];
 }

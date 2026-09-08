@@ -9,6 +9,19 @@ import { readRecords, removeRecord, resolveRegistryDir, writeRecord } from "../s
 
 const record = (id = "123e4567-e89b-12d3-a456-426614174000") => ({ schemaVersion: 1 as const, instanceId: id, sequence: 1, pid: 7, processIdentity: "boot:1", startedAt: new Date(0).toISOString(), heartbeatAt: new Date(0).toISOString(), activityAt: new Date(0).toISOString(), sessionId: null, sessionFile: null, leafId: null, cwd: "/tmp", sessionName: null, mode: null, provider: null, model: null, thinking: null, activity: "unknown" as const, activeTools: [], capabilities: [] });
 
+test("parent metadata is optional but strictly validated without weakening required fields", () => {
+  expect(validateRecord(record())).toBe(true);
+  for (const parentSessionFile of [null, "/synthetic/parent.jsonl"]) {
+    expect(validateRecord({ ...record(), parentSessionFile })).toBe(true);
+  }
+  for (const parentSessionFile of [undefined, "", 7, {}, "x".repeat(4097)]) {
+    expect(validateRecord({ ...record(), parentSessionFile })).toBe(false);
+  }
+  const { sessionFile: _file, ...missing } = record();
+  expect(validateRecord(missing)).toBe(false);
+  expect(validateRecord({ ...missing, parentSessionFile: null })).toBe(false);
+});
+
 test("validates strict records and rejects unknown fields", () => { expect(validateRecord(record())).toBe(true); expect(validateRecord({ ...record(), secret: "no" })).toBe(false); });
 test("writes atomically and skips malformed records", () => {
   const dir = mkdtempSync(join(tmpdir(), "registry-test-")); try { writeRecord(dir, record()); writeFileSync(join(dir, "123e4567-e89b-12d3-a456-426614174001.json"), "{}"); const got = readRecords(dir); expect(got.records).toHaveLength(1); expect(got.warnings).toHaveLength(1); } finally { rmSync(dir, { recursive: true, force: true }); }

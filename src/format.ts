@@ -62,6 +62,7 @@ export function formatDetails(row: SessionRow): string {
     `Directory: ${row.cwd}`, `PID: ${row.pid}`, `Status: ${statusLabel(row)}`,
     `Evidence: ${row.evidence} · ${row.freshness}`,
     ...(row.sessionId ? [`Session: ${row.sessionId}`] : []),
+    ...(row.parentSessionFile ? [`Derived from: ${row.parentSessionFile} (saved metadata; parent live state not checked)`] : ["Derived from: Unknown (no parent metadata)"]),
     ...(row.model ? [`Model: ${row.provider ? `${row.provider}/` : ""}${row.model}`] : []),
     ...(row.thinking ? [`Thinking: ${row.thinking}`] : []),
     ...(row.mode ? [`Mode: ${row.mode}`] : []),

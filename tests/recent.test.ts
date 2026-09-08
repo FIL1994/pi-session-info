@@ -1,11 +1,22 @@
 import { expect, test } from "bun:test";
-import { recentSessions } from "../src/history/recent";
+import { recentSessions, parentMatch, savedDetails } from "../src/history/recent";
 import { demoOverview } from "../src/demo";
 import type { SavedSession } from "../src/history/reader";
 
 function saved(id: string, time = 1000): SavedSession {
   return { sessionId: id, sessionFile: `/synthetic/${id}.jsonl`, cwd: "/synthetic/project", name: null, modifiedAt: new Date(time).toISOString() };
 }
+
+test("ancestry matches only the parent file, not cwd, and does not imply liveness", () => {
+  const parent = saved("parent");
+  const child = { ...saved("child"), parentSessionFile: parent.sessionFile };
+  expect(parentMatch(child, [parent])).toBe("matched");
+  expect(parentMatch(child, [saved("unrelated")])).toBe("unavailable");
+  expect(parentMatch(saved("unknown"), [parent])).toBe("unknown");
+  expect(savedDetails(child, [parent]).join("\n")).toContain("not evidence of liveness");
+  expect(savedDetails(child, []).join("\n")).toContain("outside discovery coverage");
+  expect(savedDetails(saved("unknown")).join("\n")).toContain("Unknown (no parent metadata)");
+});
 
 test("excludes exact live IDs and paths including stale telemetry, not same cwd", () => {
   const live = demoOverview();

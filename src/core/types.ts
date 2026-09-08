@@ -19,6 +19,7 @@ export interface SessionRow {
   heartbeatAt?: string;
   activityAt?: string;
   sessionFile?: string | null;
+  parentSessionFile?: string | null;
   provider?: string | null;
   mode?: string | null;
 }

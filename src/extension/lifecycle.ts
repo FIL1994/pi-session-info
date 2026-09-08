@@ -27,6 +27,8 @@ export function registerLifecycle(pi: ExtensionAPI, deps: LifecycleDeps = {}): v
   const metadata = (ctx: ExtensionContext) => ({
     sessionId: ctx.sessionManager.getSessionId() ?? null,
     sessionFile: ctx.sessionManager.getSessionFile() ?? null,
+    parentSessionFile: typeof ctx.sessionManager.getHeader === "function"
+      ? ctx.sessionManager.getHeader()?.parentSession ?? null : null,
     leafId: ctx.sessionManager.getLeafId() ?? null,
     cwd: ctx.sessionManager.getCwd(), sessionName: ctx.sessionManager.getSessionName() ?? null,
     mode: ctx.mode, provider: ctx.model?.provider ?? null, model: ctx.model?.id ?? null,

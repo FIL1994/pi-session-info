@@ -83,10 +83,10 @@ export function registerSessionsCommand(pi: ExtensionAPI, dependencies: Sessions
               : `Recent sessions${pinnedOnly ? " · Pinned" : ""} · ${history ? `${saved.length} of ${filtered.length}` : "not loaded"}`,
             rows: tab === "Running" ? overview.sessions.map((row) => ({
               id: `live:${row.instanceId}`, project: projectLabel(row, overview), name: row.name ?? `PID ${row.pid}`,
-              meta: `${statusLabel(row)} · ${row.model ?? ""}${row.pid === self ? " (this session)" : ""}`, pid: `PID ${row.pid}`,
+              meta: `${statusLabel(row)} · ${row.model ?? ""}${row.parentSessionFile ? " · derived" : " · ancestry unknown"}${row.pid === self ? " (this session)" : ""}`, pid: `PID ${row.pid}`,
             })) : saved.map((row) => ({
               id: `saved:${row.sessionId}`, project: projectLabel(row, recent), name: row.name ?? row.sessionId,
-              pinned: isPinned(row.sessionId), savedAt: row.modifiedAt, meta: `saved ${relativeTime(row.modifiedAt, now)}`,
+              pinned: isPinned(row.sessionId), savedAt: row.modifiedAt, meta: `saved ${relativeTime(row.modifiedAt, now)} · ${row.parentSessionFile ? "derived" : "ancestry unknown"}`,
             })),
             actions: [...(tab === "Recent" ? [...(filtered.length > limit ? ["Show more"] : []), pinnedOnly ? "All recent" : "Pinned only"] : []), "Refresh", "Discovery details", "Close"],
             warnings: scanWarnings(tab === "Running" ? overview.warnings : [...recent.warnings,
@@ -153,7 +153,7 @@ export function registerSessionsCommand(pi: ExtensionAPI, dependencies: Sessions
             if (row) await showDetails(ctx, formatDetails(row), row.sessionId);
           } else {
             const row = saved.find((row) => `saved:${row.sessionId}` === choice);
-            if (row) await showDetails(ctx, savedDetails(row).map(terminalText).join("\n"), row.sessionId);
+            if (row) await showDetails(ctx, savedDetails(row, history?.sessions).map(terminalText).join("\n"), row.sessionId);
           }
         }
       } catch { ctx.ui.notify("Could not display sessions. Close and retry /sessions.", "error"); }

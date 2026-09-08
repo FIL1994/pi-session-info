@@ -16,6 +16,7 @@ function harness(options: { failWrite?: boolean; noIdentity?: boolean; hasUI?: b
   let idle = true;
   let model = "fixture-model";
   let session = "fixture-session";
+  let parentSession: string | undefined;
   let name = "Fixture name";
   let unrefs = 0;
   const ctx = {
@@ -23,7 +24,7 @@ function harness(options: { failWrite?: boolean; noIdentity?: boolean; hasUI?: b
     get model() { return { provider: "fixture", id: model }; },
     isIdle: () => idle,
     sessionManager: { getSessionId: () => session, getSessionFile: () => undefined, getLeafId: () => "leaf",
-      getCwd: () => "/fixture/project", getSessionName: () => name },
+      getCwd: () => "/fixture/project", getSessionName: () => name, getHeader: () => ({ parentSession }) },
     ui: { notify: (text: string) => notices.push(text) },
   } as unknown as ExtensionContext;
   const pi = { on: (event: string, handler: (event: Record<string, unknown>, ctx: ExtensionContext) => void) => handlers.set(event, handler) } as unknown as ExtensionAPI;
@@ -52,12 +53,26 @@ function harness(options: { failWrite?: boolean; noIdentity?: boolean; hasUI?: b
     now = end;
   };
   return { writes, removed, notices, timers, advance, unrefs: () => unrefs,
+    parent: (value: string | undefined) => { parentSession = value; },
     emit: (event: string, data: Record<string, unknown> = {}) => handlers.get(event)?.(data, ctx),
     idle: (value: boolean) => { idle = value; }, model: (value: string) => { model = value; },
     session: (value: string) => { session = value; }, name: (value: string) => { name = value; },
     last: () => writes.at(-1)!,
   };
 }
+
+test("parent metadata follows the session and clears on switching to an unlinked session", () => {
+  const h = harness();
+  h.parent("/synthetic/parent.jsonl");
+  h.emit("session_start");
+  expect(h.last().parentSessionFile).toBe("/synthetic/parent.jsonl");
+  h.parent(undefined);
+  h.session("new-session");
+  h.emit("session_start");
+  expect(h.last().parentSessionFile).toBeNull();
+  expect(h.last().sessionId).toBe("new-session");
+  h.emit("session_shutdown");
+});
 
 test("activation publishes real metadata immediately; idle heartbeat doesn't invent activity", () => {
   const h = harness(); expect(h.timers.size).toBe(0);

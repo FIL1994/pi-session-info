@@ -10,6 +10,7 @@ export interface SavedSession {
   cwd: string;
   name: string | null;
   modifiedAt: string;
+  parentSessionFile?: string | null;
 }
 export interface HistorySnapshot { sessions: SavedSession[]; warnings: string[]; failed?: boolean }
 /** Counts only: never publish paths or transcript contents as progress. */
@@ -117,7 +118,8 @@ export async function readHistory(options: { directories?: string[]; agentDir?: 
           !linked.isFile() || linked.dev !== before.dev || linked.ino !== before.ino) {
           note("files changed during reading and skipped"); return;
         }
-        const row: SavedSession = { sessionId: header.id, sessionFile: path, cwd: header.cwd, name, modifiedAt: before.mtime.toISOString() };
+        const parentSessionFile = text(header.parentSession) ? header.parentSession : null;
+        const row: SavedSession = { sessionId: header.id, sessionFile: path, cwd: header.cwd, name, parentSessionFile, modifiedAt: before.mtime.toISOString() };
         const old = sessions.get(row.sessionId);
         if (!old || row.modifiedAt > old.modifiedAt || (row.modifiedAt === old.modifiedAt && path < old.sessionFile)) sessions.set(row.sessionId, row);
       } finally { await fd.close(); }

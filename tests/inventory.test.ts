@@ -22,6 +22,15 @@ const fallback: Overview = { schemaVersion: 1, source: "live", warnings: [], ses
     model: null, thinking: null, activity: "unknown", evidence: "unmatched", freshness: "unknown", activeTools: [] },
 ] };
 
+test("live details retain ancestry provenance and escape parent paths", () => {
+  const row = { ...fallback.sessions[0]!, parentSessionFile: "/synthetic/parent\u001b[31m.jsonl" };
+  const details = formatDetails(row);
+  expect(details).toContain("Derived from:");
+  expect(details).toContain("parent live state not checked");
+  expect(details).not.toContain("\u001b");
+  expect(formatDetails(fallback.sessions[0]!)).toContain("Unknown (no parent metadata)");
+});
+
 test("exact mapping replaces fallback and includes instrumented Node launchers", () => {
   const result = reconcile(fallback, [record, { ...record, pid: 20, instanceId: "other", sessionId: "session-b" }], () => "boot:123", now);
   expect(result.sessions).toHaveLength(2);

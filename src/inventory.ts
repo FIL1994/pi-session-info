@@ -25,6 +25,7 @@ export function reconcile(
     sessions.push({
       instanceId: record.instanceId, pid: record.pid, processIdentity: record.processIdentity,
       cwd: record.cwd, sessionId: record.sessionId, sessionFile: record.sessionFile,
+      parentSessionFile: record.parentSessionFile ?? null,
       name: record.sessionName, model: record.model, provider: record.provider,
       mode: record.mode, thinking: record.thinking, activity: record.activity,
       evidence: "extension", freshness: age >= 0 && age <= 20_000 ? "fresh" : "stale",

@@ -42,6 +42,11 @@ before pagination. Unmapped processes remain a documented coverage limitation,
 not fabricated stopped/idle states. This is a narrow M4 slice, not completion of
 branch-aware content, usage accounting, or all M4 acceptance gates.
 
+Session ancestry is metadata-only: validated registry and session headers may
+record an exact parent session file. It is displayed as **derived**, never as
+“subagent”; missing metadata is unknown, and no parent is claimed live. Fork and
+clone share this metadata and therefore cannot be distinguished.
+
 The live-status vertical slice adds a private validated registry, Linux birth
 identity verification, lifecycle publishing and reconciliation. `/sessions`
 offers project-first rows, read-only details and manual refresh; uninstrumented

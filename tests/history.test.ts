@@ -15,6 +15,18 @@ const info = (name: string) => JSON.stringify({ type: "session_info", name }) + 
 const read = (root: string) => readHistory({ agentDir: root, directories: [root] });
 
 describe("readHistory", () => {
+  test("extracts bounded parent metadata and preserves unknown ancestry", async () => {
+    const root = await fixture();
+    const values = ["/synthetic/parent.jsonl", null, undefined, 42, "x".repeat(4097)];
+    for (const [i, parentSession] of values.entries()) {
+      await writeFile(join(root, `${i}.jsonl`), JSON.stringify({ type: "session", version: 3, id: String(i), cwd: "/synthetic", parentSession }) + "\n");
+    }
+    const result = await read(root);
+    expect(result.sessions).toHaveLength(5);
+    for (const row of result.sessions) {
+      expect(row.parentSessionFile).toBe(row.sessionId === "0" ? "/synthetic/parent.jsonl" : null);
+    }
+  });
   test("reports actual bounded metadata progress without paths or contents", async () => {
     const root = await fixture();
     await writeFile(join(root, "one.jsonl"), header("one") + info("PRIVATE NAME"));
