@@ -29,17 +29,8 @@ and reload/restart Pi. Nothing is installed automatically. The extension uses
 Node APIs and is typechecked against Pi 0.85.1; other host versions are unverified.
 
 Recent rows use friendly ages such as **saved 2 hours ago**; details retain the
-exact timestamp. **Pin session / Unpin session** in Running or Recent details
-stores a favorite without changing the session itself. Recent marks pins with
-**★** and offers **Pinned only / All recent**. Both views stay newest-first and
-exclude matched running sessions. Pins outside the scanned history (including
-deleted files or undiscovered custom directories) are not shown; running pins
-appear in Recent once the session is no longer running and history is refreshed.
-
-Pins persist across Pi instances in `$XDG_STATE_HOME/pi-session-info/pins`, or
-`~/.local/state/pi-session-info/pins`. Only versioned session IDs are stored,
-with private permissions and one atomic file per session. No transcripts or Pi
-settings are modified. Pin storage is created only when you explicitly pin.
+exact timestamp and are read-only. Legacy pin files, if present, are left
+untouched and are no longer used.
 Use native **`/resume`** for search, Current Folder / All filtering, and resuming;
 the extension does not duplicate those controls or automatically switch sessions.
 
@@ -54,7 +45,7 @@ session was found.
 
 - **Tab / ← / →**: switch tabs; each tab keeps its selected session.
 - **↑ / ↓**, **Page Up / Down**: navigate; **Enter**: details.
-- **r**: refresh; **m**: show 10 more; **p**: toggle pinned-only Recent.
+- **r**: refresh; **m**: show 10 more.
 - **c**: discovery details; **Escape**: close, or cancel an active load.
 
 Loading paints immediately with an animated activity indicator, elapsed time,
@@ -65,8 +56,8 @@ explain why scanning is needed; refreshes label the retained rows as previous
 results. RPC clients get a static loading explanation and cancellation, not live
 progress. Cancellation or failed refresh leaves the prior snapshot and timestamp
 intact; press **r** to retry. Selection follows session identity through reordering, details, and tab
-switches; Show more selects the first newly revealed session. Pin changes get a
-brief confirmation. Display ages repaint every 15 seconds, but data is scanned
+switches; Show more selects the first newly revealed session. Display ages repaint
+every 15 seconds, but data is scanned
 only on initial load / Refresh—not a watch loop. Linux process discovery itself
 is a small synchronous scan; cancellation takes effect at history I/O boundaries.
 RPC clients receive equivalent menus and a cancellable loading dialog.

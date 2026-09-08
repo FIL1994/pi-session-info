@@ -21,14 +21,14 @@ export function discoveryText(page: SessionPage): string {
   ] : [
     "• Recent lists saved session files, newest file modification first. Saved age does not tell you whether a session is running, stopped, or idle.",
     "• Your current session and exact matches to known running sessions are excluded. Unconnected or undetected sessions can still appear here.",
-    "• The list starts with 15 sessions; Show more adds 10. Pinned only filters the same snapshot. Files outside scanned locations or scan limits may be missing.",
+    "• The list starts with 15 sessions; Show more adds 10. Files outside scanned locations or scan limits may be missing.",
     "• To continue a session, use /resume. This list only shows metadata; it does not switch sessions.",
   ];
   return [
     terminalText(page.summary),
     ...(page.notice ? [`Latest attempt\n${terminalText(page.notice)}`] : []),
     `Scan results\n${issues}`,
-    ...(page.warnings.length ? ["What to do\nReturn to the list and press r to retry. For unreadable files, check access to the configured session, registry, or pins directory. Scan limits mean the snapshot may remain incomplete."] : []),
+    ...(page.warnings.length ? ["What to do\nReturn to the list and press r to retry. For unreadable files, check access to the configured session or registry. Scan limits mean the snapshot may remain incomplete."] : []),
     `How ${page.tab} works\n${help.join("\n\n")}`,
     "Snapshots do not update automatically. Press r in the session list to refresh.",
   ].join("\n\n");

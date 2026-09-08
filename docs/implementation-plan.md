@@ -27,12 +27,9 @@ Unknown warnings are retained. An unloaded snapshot or failed attempt is not
 presented as a successful scan, and no warnings does not imply complete discovery.
 
 Recent now displays relative saved ages (exact timestamps remain in details).
-Session favorites are extension-owned, persistent ID-only pin files under XDG
-state, separate from transcripts and the live registry. Detail actions pin/unpin;
-Recent offers a pinned-only view without overriding running-session exclusions
-or its newest-first order. The observer remains read-only toward Pi sessions:
-native `/resume` owns search, project scope and session switching. Pin storage
-is the sole new user-initiated persistent mutation, not session control.
+The observer remains read-only toward Pi sessions: native `/resume` owns search,
+project scope and session switching. Legacy pin files, if present, are left
+untouched and are no longer used; no cleanup code is provided.
 
 The Recent-history slice now adds Running/Recent tabs to `/sessions`, with 15
 saved sessions initially and Show more in batches of 10. History is metadata-only,

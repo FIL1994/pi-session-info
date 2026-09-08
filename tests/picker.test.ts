@@ -44,7 +44,7 @@ test("tabs, fixed summaries/actions, responsive Unicode rows, and injected selec
 });
 
 test("narrow rows prioritize names and neutralize terminal bytes", () => {
-  const row = { id: "x", project: "project", name: "会話 👩‍💻\u001b[31m", meta: "secondary-metadata", pinned: true };
+  const row = { id: "x", project: "project", name: "会話 👩‍💻\u001b[31m", meta: "secondary-metadata" };
   for (const width of [0, 4, 20, 50, 100]) {
     const output = rowColumns(row, width);
     expect(visibleWidth(output)).toBeLessThanOrEqual(width);
@@ -56,7 +56,7 @@ test("narrow rows prioritize names and neutralize terminal bytes", () => {
 test("PID survives long model names and session columns do not stretch with the terminal", async () => {
   const p = page();
   p.rows = [
-    { id: "one", project: "会話", name: "Short", meta: "Working · " + "long-model-".repeat(20), pid: "PID 4194304", pinned: true },
+    { id: "one", project: "会話", name: "Short", meta: "Working · " + "long-model-".repeat(20), pid: "PID 4194304" },
     { id: "two", project: "project", name: "Session two", meta: "Idle · model", pid: "PID 42" },
   ];
   await selectSessionPage(host((component) => {
@@ -105,10 +105,13 @@ test("TUI tabs, escape, and action shortcuts return stable values", async () => 
   for (const [key, expected] of [["\t", "Recent"], ["r", "Refresh"], ["c", "Discovery details"], ["\u001b", undefined]] as const) {
     expect(await selectSessionPage(host((c) => c.handleInput?.(key)), page(), () => {})).toBe(expected);
   }
+  let calls = 0;
+  expect(await selectSessionPage(host((c) => { c.handleInput?.("p"); calls++; c.handleInput?.("\u001b"); }), { ...page(), tab: "Recent", actions: ["Refresh", "Discovery details", "Close"] }, () => {})).toBeUndefined();
+  expect(calls).toBe(1);
 });
 
 test("short terminals retain tabs and actions without exceeding available height", async () => {
-  const p = { ...page(), tab: "Recent" as const, actions: ["Show more", "Pinned only", "Refresh", "Discovery details", "Close"] };
+  const p = { ...page(), tab: "Recent" as const, actions: ["Show more", "Refresh", "Discovery details", "Close"] };
   for (const height of [8, 10, 12, 20]) {
     await selectSessionPage(host((component) => {
       for (const width of [16, 32, 80]) {

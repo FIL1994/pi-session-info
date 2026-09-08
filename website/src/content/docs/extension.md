@@ -26,12 +26,8 @@ Refresh keeps previous results visible and labelled. **Escape** cancels;
 **Tab / ← / →** cancels and switches tabs. Press **r** to retry after cancellation
 or failure. RPC clients get a static loading explanation, not live counters.
 
-Rows show relative saved ages; details retain exact dates. Use **Pin session** or
-**Unpin session** in details to save favorites. **Pinned only** in Recent filters
-before the 15-row limit, remains newest-first, and still excludes running sessions.
-Pins are stored separately under `$XDG_STATE_HOME/pi-session-info/pins` (default
-`~/.local/state/pi-session-info/pins`), not in transcripts. Missing or unscanned
-sessions do not appear merely because they are pinned.
+Rows show relative saved ages; details retain exact dates. Session details are
+read-only; use native **`/resume`** to continue a session.
 
 Search, Current Folder / All filtering, and resuming remain in native **`/resume`**.
 
@@ -46,7 +42,7 @@ No warnings does not guarantee every session was found. Use **↑↓** or
 **Page Up / Down** to scroll details and **Escape / Enter** to go back.
 
 Use **↑↓** / **Page Up / Down** to navigate, **Enter** for details, **r** to
-refresh, **m** for more history, **p** for pinned-only Recent, and **Escape** to
+refresh, **m** for more history, and **Escape** to
 close. Each tab preserves selection by session identity, including after refresh.
 
 While loading, previous rows remain visible and **Escape** cancels. Failed or

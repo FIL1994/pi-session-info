@@ -10,7 +10,7 @@ async function dashboard(deps: SessionsDeps, keys: string[][], onLoading?: (comp
   const pages: string[] = [], loading: string[] = [];
   const actions: Record<string, KeyId> = { "tui.select.cancel": "escape", "tui.select.confirm": "enter", "tui.select.down": "down", "tui.select.up": "up" };
   const pi = { registerCommand(_name: string, command: { handler: typeof handler }) { handler = command.handler; } } as unknown as ExtensionAPI;
-  registerSessionsCommand(pi, { pins: { isPinned: () => false, setPinned() {} }, now: () => 1000, ...deps });
+  registerSessionsCommand(pi, { now: () => 1000, ...deps });
   const ctx = { mode: "tui", hasUI: true, ui: {
     notify() {}, select: async () => "Back",
     custom: (factory: (...args: any[]) => Component) => new Promise((resolve, reject) => {

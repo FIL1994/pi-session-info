@@ -5,7 +5,7 @@ import { discoveryText } from "./discovery";
 import { loadingLines, type LoadingState, type LoadProgress } from "./loading";
 
 export type SessionsTab = "Running" | "Recent";
-export interface PageRow { id: string; project: string; name: string; meta: string; pid?: string; pinned?: boolean; savedAt?: string }
+export interface PageRow { id: string; project: string; name: string; meta: string; pid?: string; savedAt?: string }
 export interface SessionPage {
   tab: SessionsTab;
   summary: string;
@@ -42,12 +42,11 @@ export function rowColumns(row: PageRow, width: number, columns = columnWidths([
     const clipped = truncateToWidth(value, Math.max(0, size), "…");
     return clipped + " ".repeat(Math.max(0, size - visibleWidth(clipped)));
   };
-  const marker = row.pinned ? "★ " : "  ";
-  if (width < 42) return truncateToWidth(marker + clean.name, width);
+  if (width < 42) return truncateToWidth(clean.name, width);
   const cells = [cell(clean.project, columns.project), cell(clean.name, columns.name)];
   if (width >= 76) cells.push(cell(clean.meta, columns.meta));
   if (columns.pid) cells.push(cell(terminalText(row.pid ?? ""), columns.pid));
-  return marker + cells.join("  ");
+  return cells.join("  ");
 }
 
 function rowMetadata(row: PageRow): string {
@@ -78,7 +77,7 @@ function pageComponent(page: SessionPage, tui: Host[0], theme: Host[1], kb: Host
       const stamp = page.updatedAt === undefined ? "Not loaded" : `Updated ${relativeTime(new Date(page.updatedAt).toISOString(), now)} · snapshot`;
       const status = page.notice;
       const actionHints = loading ? `Esc cancel · Tab / ← → cancel & switch${page.rows.length ? " · ↑↓ previous rows" : ""}` : page.actions.map((action) => ({
-        "Show more": "m More", "Pinned only": "p Pinned only", "All recent": "p All recent", "Refresh": "r Refresh", "Discovery details": "c Discovery details", "Close": "Esc Close",
+        "Show more": "m More", "Refresh": "r Refresh", "Discovery details": "c Discovery details", "Close": "Esc Close",
       })[action] ?? action).join(" · ");
       const progress = loading ? loadingLines(loading, now) : [];
       const header = loading ? [tabs, ...progress.slice(0, height >= 10 ? 3 : 2).map(terminalText)]
@@ -88,7 +87,7 @@ function pageComponent(page: SessionPage, tui: Host[0], theme: Host[1], kb: Host
         : `Previous results · ${stamp}`));
       if (!loading && status && height >= 8) header.push(terminalText(status));
       if (!loading && page.warnings.length && height >= 12) header.push(theme.fg("warning", `${page.warnings.length} scan warning${page.warnings.length === 1 ? "" : "s"} · c details`));
-      const compactHints = loading ? "Esc cancel · Tab switch" : `${page.actions.includes("Show more") ? "m " : ""}${page.tab === "Recent" ? "p " : ""}r c Esc`;
+      const compactHints = loading ? "Esc cancel · Tab switch" : `${page.actions.includes("Show more") ? "m " : ""}r c Esc`;
       const footer = new Text(height < 10 ? compactHints : actionHints, 0, 0).render(width).slice(0, Math.max(1, height - header.length - 2)).map((line) => theme.fg("muted", line));
       if (height >= 10 && !loading) footer.push(theme.fg("dim", "Tab / ← → tabs · ↑↓ navigate · Enter details"));
       if (rowWidth >= 76 && height >= 14 && (!loading || page.rows.length)) header.push(theme.fg("dim", "  " + rowColumns(columnHeader, rowWidth, columns)));
@@ -125,7 +124,6 @@ function pageComponent(page: SessionPage, tui: Host[0], theme: Host[1], kb: Host
       else if (!loading && data === "r") done("Refresh");
       else if (!loading && data === "c") done("Discovery details");
       else if (!loading && data === "m" && page.actions.includes("Show more")) done("Show more");
-      else if (!loading && data === "p" && page.tab === "Recent") done(page.actions.includes("Pinned only") ? "Pinned only" : "All recent");
       else {
         if (kb.matches(data, "tui.select.up")) selected = Math.max(0, selected - 1);
         if (kb.matches(data, "tui.select.down")) selected = Math.min(page.rows.length - 1, selected + 1);
@@ -146,7 +144,7 @@ export async function selectSessionPage(ctx: ExtensionCommandContext, page: Sess
       return pageComponent(page, tui, theme, kb, done, onFocus);
     }); } finally { if (tick) clearInterval(tick); }
   }
-  const labels = page.rows.map((row, i) => terminalText(`${i + 1}. ${row.pinned ? "★ " : ""}${row.project} · ${row.name} · ${rowMetadata(row)}`));
+  const labels = page.rows.map((row, i) => terminalText(`${i + 1}. ${row.project} · ${row.name} · ${rowMetadata(row)}`));
   const choice = await ctx.ui.select([
     page.tab === "Running" ? "[Running]  Recent" : "Running  [Recent]", page.summary,
     page.updatedAt === undefined ? "Not loaded" : `Updated ${relativeTime(new Date(page.updatedAt).toISOString(), page.now)} · snapshot`,
