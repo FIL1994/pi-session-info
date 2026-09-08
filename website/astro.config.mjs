@@ -3,6 +3,8 @@ import starlight from '@astrojs/starlight';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
+  site: 'https://fil1994.github.io',
+  base: '/pi-session-info',
   integrations: [
     starlight({
       title: 'pi-session-info',

@@ -164,6 +164,17 @@ bun run dev
 Run `bun run check` and `bun run build` inside `website/` to validate the site.
 Use `bun run preview` to preview its static build locally.
 
+### GitHub Pages
+
+The documentation deploys to https://fil1994.github.io/pi-session-info/ through
+`.github/workflows/deploy-website.yml`. Website changes in pull requests are
+checked and built without deploying. After merging to `main`, website or workflow
+changes deploy automatically; the workflow also supports manual runs.
+
+Repository **Settings → Pages → Source** must be **GitHub Actions**. Astro's
+`site` and `base` settings in `website/astro.config.mjs` target this repository's
+Pages URL. Local development and preview also use the `/pi-session-info/` base.
+
 ## Repository layout
 
 ```text
