@@ -8,12 +8,12 @@ bun run start [--demo] [--json] [--registry-dir PATH]
 bun run start --help
 ```
 
-| Flag | Behavior |
-| --- | --- |
-| `--help`, `-h` | Print usage without discovery. |
-| `--demo` | Use fictional synthetic rows; never performs live discovery. |
-| `--json` | Print the overview as formatted JSON. |
-| `--registry-dir PATH` | Read the private registry from `PATH`. |
+| Flag                  | Behavior                                                     |
+| --------------------- | ------------------------------------------------------------ |
+| `--help`, `-h`        | Print usage without discovery.                               |
+| `--demo`              | Use fictional synthetic rows; never performs live discovery. |
+| `--json`              | Print the overview as formatted JSON.                        |
+| `--registry-dir PATH` | Read the private registry from `PATH`.                       |
 
 Unknown options and positional arguments are rejected. History, watch mode,
 the CLI `show` command, and `--session-dir` are not available. The `/sessions`
@@ -38,7 +38,7 @@ identity and process start ticks, not PID alone.
 
 ## Exit codes
 
-| Code | Behavior |
-| --- | --- |
-| `0` | Help or a successful, possibly partial snapshot. |
-| `2` | Invalid arguments or discovery failure. |
+| Code | Behavior                                         |
+| ---- | ------------------------------------------------ |
+| `0`  | Help or a successful, possibly partial snapshot. |
+| `2`  | Invalid arguments or discovery failure.          |

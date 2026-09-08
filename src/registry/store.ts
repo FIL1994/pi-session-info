@@ -1,6 +1,15 @@
 import {
-  closeSync, constants, fstatSync, lstatSync, mkdirSync, openSync, opendirSync,
-  readSync, renameSync, unlinkSync, writeFileSync,
+  closeSync,
+  constants,
+  fstatSync,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  opendirSync,
+  readSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync,
 } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
@@ -16,9 +25,12 @@ function checkComponent(path: string, final: boolean): void {
   const stat = lstatSync(path);
   const mode = stat.mode & 0o7777;
   const owner = process.getuid?.();
-  if (!stat.isDirectory() || (stat.uid !== owner && stat.uid !== 0)
-    || (!final && (mode & 0o022) !== 0 && (mode & 0o1000) === 0)
-    || (final && (stat.uid !== owner || (mode & 0o077) !== 0))) {
+  if (
+    !stat.isDirectory() ||
+    (stat.uid !== owner && stat.uid !== 0) ||
+    (!final && (mode & 0o022) !== 0 && (mode & 0o1000) === 0) ||
+    (final && (stat.uid !== owner || (mode & 0o077) !== 0))
+  ) {
     throw new Error(`Unsafe registry path: ${path}`);
   }
 }
@@ -30,9 +42,13 @@ function prepareDir(dir: string, create: boolean): void {
   checkComponent(path, target === path);
   for (const part of target.split("/").filter(Boolean)) {
     path = join(path, part);
-    try { checkComponent(path, path === target); } catch (error) {
+    try {
+      checkComponent(path, path === target);
+    } catch (error) {
       if (!create || !missing(error)) throw error;
-      try { mkdirSync(path, 0o700); } catch (creationError) {
+      try {
+        mkdirSync(path, 0o700);
+      } catch (creationError) {
         // Concurrent publishers may create the same safe directory.
         if ((creationError as NodeJS.ErrnoException).code !== "EEXIST") throw creationError;
       }
@@ -46,14 +62,17 @@ export { prepareDir as preparePrivateDir };
 
 export function resolveRegistryDir(env: NodeJS.ProcessEnv = process.env, home = homedir()): string {
   if (env.PI_SESSION_INFO_REGISTRY_DIR) {
-    if (!env.PI_SESSION_INFO_REGISTRY_DIR.startsWith("/")) throw new Error("Registry path must be absolute");
+    if (!env.PI_SESSION_INFO_REGISTRY_DIR.startsWith("/"))
+      throw new Error("Registry path must be absolute");
     return resolve(env.PI_SESSION_INFO_REGISTRY_DIR);
   }
   if (env.XDG_RUNTIME_DIR?.startsWith("/")) {
     try {
       prepareDir(env.XDG_RUNTIME_DIR, false);
       return join(resolve(env.XDG_RUNTIME_DIR), "pi-session-info");
-    } catch { /* Invalid runtime directory: use the private home fallback. */ }
+    } catch {
+      /* Invalid runtime directory: use the private home fallback. */
+    }
   }
   return join(resolve(home), ".cache", "pi-session-info", "run");
 }
@@ -67,13 +86,22 @@ export function writeRecord(dir: string, record: RegistryRecord): void {
   const tmp = join(dir, `.${name}.${process.pid}.${randomBytes(12).toString("hex")}`);
   let fd: number | undefined;
   try {
-    fd = openSync(tmp, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+    fd = openSync(
+      tmp,
+      constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
+      0o600,
+    );
     writeFileSync(fd, json);
-    closeSync(fd); fd = undefined;
+    closeSync(fd);
+    fd = undefined;
     renameSync(tmp, join(dir, name));
   } catch (error) {
     if (fd !== undefined) closeSync(fd);
-    try { unlinkSync(tmp); } catch { /* Preserve the original failure. */ }
+    try {
+      unlinkSync(tmp);
+    } catch {
+      /* Preserve the original failure. */
+    }
     throw error;
   }
 }
@@ -82,7 +110,12 @@ function readRecord(path: string, expectedId: string): RegistryRecord {
   const fd = openSync(path, constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW);
   try {
     const stat = fstatSync(fd);
-    if (!stat.isFile() || stat.uid !== process.getuid?.() || (stat.mode & 0o077) !== 0 || stat.size > MAX_BYTES) {
+    if (
+      !stat.isFile() ||
+      stat.uid !== process.getuid?.() ||
+      (stat.mode & 0o077) !== 0 ||
+      stat.size > MAX_BYTES
+    ) {
       throw new Error("Unsafe or oversized registry record");
     }
     // Descriptor checks avoid lstat/open races; the extra byte detects growth.
@@ -95,15 +128,20 @@ function readRecord(path: string, expectedId: string): RegistryRecord {
     }
     if (length > MAX_BYTES) throw new Error("Registry record too large");
     const value: unknown = JSON.parse(buffer.subarray(0, length).toString("utf8"));
-    if (!validateRecord(value) || value.instanceId !== expectedId) throw new Error("Invalid registry record");
+    if (!validateRecord(value) || value.instanceId !== expectedId)
+      throw new Error("Invalid registry record");
     return value;
-  } finally { closeSync(fd); }
+  } finally {
+    closeSync(fd);
+  }
 }
 
 export function readRecords(dir: string): { records: RegistryRecord[]; warnings: string[] } {
   const records: RegistryRecord[] = [];
   const warnings: string[] = [];
-  try { prepareDir(dir, false); } catch (error) {
+  try {
+    prepareDir(dir, false);
+  } catch (error) {
     if (!missing(error)) warnings.push("Registry directory unsafe or unreadable.");
     return { records, warnings };
   }
@@ -125,11 +163,25 @@ export function readRecords(dir: string): { records: RegistryRecord[]; warnings:
         if (!entry.name.startsWith(".")) skipped++;
         continue;
       }
-      try { records.push(readRecord(join(dir, entry.name), id)); } catch { skipped++; }
+      try {
+        records.push(readRecord(join(dir, entry.name), id));
+      } catch {
+        skipped++;
+      }
     }
-  } catch { warnings.push("Registry directory read failed."); }
-  finally { try { directory?.closeSync(); } catch { warnings.push("Registry directory close failed."); } }
-  if (skipped) warnings.push(`${skipped} registry record(s) skipped (unsafe, malformed, oversized, or unreadable).`);
+  } catch {
+    warnings.push("Registry directory read failed.");
+  } finally {
+    try {
+      directory?.closeSync();
+    } catch {
+      warnings.push("Registry directory close failed.");
+    }
+  }
+  if (skipped)
+    warnings.push(
+      `${skipped} registry record(s) skipped (unsafe, malformed, oversized, or unreadable).`,
+    );
   return { records, warnings };
 }
 
@@ -140,5 +192,7 @@ export function removeRecord(dir: string, instanceId: string): void {
     const path = join(dir, `${instanceId}.json`);
     readRecord(path, instanceId);
     unlinkSync(path);
-  } catch (error) { if (!missing(error)) throw error; }
+  } catch (error) {
+    if (!missing(error)) throw error;
+  }
 }

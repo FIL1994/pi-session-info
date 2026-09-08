@@ -130,7 +130,13 @@ bun run start --help
 bun run check
 ```
 
-`bun install` installs the local Lefthook Git hooks. The `commit-msg` hook uses
+`bun run format` formats supported files with Oxfmt; `bun run lint` runs Oxlint
+(`bun run lint:fix` applies safe fixes). `bun run check` checks formatting, lint,
+types, and tests. Generated output and dependencies are excluded.
+
+`bun install` installs the local Lefthook Git hooks. The `pre-commit` hook checks
+formatting and lint on staged files without rewriting or staging changes. Run
+`bun run format` to fix formatting before committing. The `commit-msg` hook uses
 commitlint to require Conventional Commits, including for merge and revert messages.
 Use `type(scope): description` (scope optional), for example
 `feat(sessions): add filtering` or `fix: preserve unknown status`. Allowed types:

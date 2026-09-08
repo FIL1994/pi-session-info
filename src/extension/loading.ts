@@ -24,7 +24,8 @@ export function loadingLines(state: LoadingState, now: number): string[] {
   return [
     `${frame} ${state.label}`,
     `${age} elapsed · ${phase}`,
-    counts ? `${counts.files} files checked · ${counts.sessions} saved sessions found · ${counts.directories} folders visited`
+    counts
+      ? `${counts.files} files checked · ${counts.sessions} saved sessions found · ${counts.directories} folders visited`
       : "Preparing scan · total size not known yet",
   ];
 }

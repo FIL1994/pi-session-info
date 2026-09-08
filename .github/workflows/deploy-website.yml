@@ -3,9 +3,9 @@ name: Deploy documentation
 on:
   push:
     branches: [main]
-    paths: ['website/**', '.github/workflows/deploy-website.yml']
+    paths: ["website/**", ".github/workflows/deploy-website.yml"]
   pull_request:
-    paths: ['website/**', '.github/workflows/deploy-website.yml']
+    paths: ["website/**", ".github/workflows/deploy-website.yml"]
   workflow_dispatch:
 
 permissions:

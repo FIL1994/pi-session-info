@@ -23,29 +23,49 @@ export function reconcile(
   for (const record of live) {
     const age = now - Date.parse(record.heartbeatAt);
     sessions.push({
-      instanceId: record.instanceId, pid: record.pid, processIdentity: record.processIdentity,
-      cwd: record.cwd, sessionId: record.sessionId, sessionFile: record.sessionFile,
+      instanceId: record.instanceId,
+      pid: record.pid,
+      processIdentity: record.processIdentity,
+      cwd: record.cwd,
+      sessionId: record.sessionId,
+      sessionFile: record.sessionFile,
       parentSessionFile: record.parentSessionFile ?? null,
-      name: record.sessionName, model: record.model, provider: record.provider,
-      mode: record.mode, thinking: record.thinking, activity: record.activity,
-      evidence: "extension", freshness: age >= 0 && age <= 20_000 ? "fresh" : "stale",
-      heartbeatAt: record.heartbeatAt, activityAt: record.activityAt,
+      name: record.sessionName,
+      model: record.model,
+      provider: record.provider,
+      mode: record.mode,
+      thinking: record.thinking,
+      activity: record.activity,
+      evidence: "extension",
+      freshness: age >= 0 && age <= 20_000 ? "fresh" : "stale",
+      heartbeatAt: record.heartbeatAt,
+      activityAt: record.activityAt,
       activeTools: record.activeTools.map((tool) => tool.name),
     });
   }
-  sessions.sort((a, b) => a.cwd.localeCompare(b.cwd) || a.pid - b.pid || a.instanceId.localeCompare(b.instanceId));
+  sessions.sort(
+    (a, b) =>
+      a.cwd.localeCompare(b.cwd) || a.pid - b.pid || a.instanceId.localeCompare(b.instanceId),
+  );
   return { ...fallback, sessions, warnings, generatedAt: new Date(now).toISOString() };
 }
 
-export function liveOverview(options: {
-  registryDir?: string;
-  discover?: () => Overview;
-  identity?: (pid: number) => string | null;
-  now?: () => number;
-} = {}): Overview {
+export function liveOverview(
+  options: {
+    registryDir?: string;
+    discover?: () => Overview;
+    identity?: (pid: number) => string | null;
+    now?: () => number;
+  } = {},
+): Overview {
   const fallback = (options.discover ?? discoverSessions)();
   const registry = readRecords(options.registryDir ?? resolveRegistryDir());
-  const overview = reconcile(fallback, registry.records, options.identity ?? readProcessIdentity, (options.now ?? Date.now)());
+  const overview = reconcile(
+    fallback,
+    registry.records,
+    options.identity ?? readProcessIdentity,
+    (options.now ?? Date.now)(),
+  );
   overview.warnings.push(...registry.warnings);
   return overview;
 }

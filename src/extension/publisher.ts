@@ -31,17 +31,27 @@ export function createPublisher(initial: RegistryRecord, options: PublisherOptio
   const report = () => {
     if (warned) return;
     warned = true;
-    try { options.warn?.("Session status unavailable: check registry permissions and metadata limits."); } catch { /* observational only */ }
+    try {
+      options.warn?.("Session status unavailable: check registry permissions and metadata limits.");
+    } catch {
+      /* observational only */
+    }
   };
   const write = () => {
     pending = undefined;
     if (closed) return;
     try {
-      const next = { ...record, sequence: sequence + 1, heartbeatAt: new Date(clock()).toISOString() };
+      const next = {
+        ...record,
+        sequence: sequence + 1,
+        heartbeatAt: new Date(clock()).toISOString(),
+      };
       store(dir, next);
       record = next;
       sequence = next.sequence;
-    } catch { report(); }
+    } catch {
+      report();
+    }
   };
   const timer = (callback: () => void, ms: number) => {
     const handle = later(callback, ms);
@@ -50,12 +60,17 @@ export function createPublisher(initial: RegistryRecord, options: PublisherOptio
   };
   const beat = () => {
     if (closed) return;
-    try { record = options.sample?.() ?? record; } catch {
+    try {
+      record = options.sample?.() ?? record;
+    } catch {
       report();
       if (!closed) heartbeat = timer(beat, options.heartbeatMs ?? 5_000);
       return;
     }
-    if (pending !== undefined) { cancel(pending); pending = undefined; }
+    if (pending !== undefined) {
+      cancel(pending);
+      pending = undefined;
+    }
     write();
     if (!closed) heartbeat = timer(beat, options.heartbeatMs ?? 5_000);
   };
@@ -72,8 +87,14 @@ export function createPublisher(initial: RegistryRecord, options: PublisherOptio
       closed = true;
       if (pending !== undefined) cancel(pending);
       if (heartbeat !== undefined) cancel(heartbeat);
-      try { erase(dir, record.instanceId); } catch { report(); }
+      try {
+        erase(dir, record.instanceId);
+      } catch {
+        report();
+      }
     },
-    get record() { return record; },
+    get record() {
+      return record;
+    },
   };
 }

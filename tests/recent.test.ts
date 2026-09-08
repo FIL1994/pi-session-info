@@ -4,7 +4,13 @@ import { demoOverview } from "../src/demo";
 import type { SavedSession } from "../src/history/reader";
 
 function saved(id: string, time = 1000): SavedSession {
-  return { sessionId: id, sessionFile: `/synthetic/${id}.jsonl`, cwd: "/synthetic/project", name: null, modifiedAt: new Date(time).toISOString() };
+  return {
+    sessionId: id,
+    sessionFile: `/synthetic/${id}.jsonl`,
+    cwd: "/synthetic/project",
+    name: null,
+    modifiedAt: new Date(time).toISOString(),
+  };
 }
 
 test("ancestry matches only the parent file, not cwd, and does not imply liveness", () => {
@@ -20,14 +26,32 @@ test("ancestry matches only the parent file, not cwd, and does not imply livenes
 
 test("excludes exact live IDs and paths including stale telemetry, not same cwd", () => {
   const live = demoOverview();
-  live.sessions = [{ ...live.sessions[0]!, sessionId: "active", sessionFile: "/synthetic/by-file.jsonl", freshness: "stale", cwd: "/synthetic/project" }];
-  const result = recentSessions({ sessions: [saved("active"), saved("by-file"), saved("current"), saved("old")], warnings: [] }, live, { sessionId: "current" });
+  live.sessions = [
+    {
+      ...live.sessions[0]!,
+      sessionId: "active",
+      sessionFile: "/synthetic/by-file.jsonl",
+      freshness: "stale",
+      cwd: "/synthetic/project",
+    },
+  ];
+  const result = recentSessions(
+    { sessions: [saved("active"), saved("by-file"), saved("current"), saved("old")], warnings: [] },
+    live,
+    { sessionId: "current" },
+  );
   expect(result.sessions.map((s) => s.sessionId)).toEqual(["old"]);
 });
 
 test("orders newest first and deduplicates before pagination without altering inputs", () => {
-  const sessions = [saved("old", 1000), saved("new", 3000), saved("new", 2000), saved("middle", 2000)];
-  const live = demoOverview(); live.sessions = [];
+  const sessions = [
+    saved("old", 1000),
+    saved("new", 3000),
+    saved("new", 2000),
+    saved("middle", 2000),
+  ];
+  const live = demoOverview();
+  live.sessions = [];
   const result = recentSessions({ sessions, warnings: ["partial scan"] }, live);
   expect(result.sessions.map((s) => s.sessionId)).toEqual(["new", "middle", "old"]);
   expect(sessions).toHaveLength(4);
@@ -49,5 +73,7 @@ test("current file is excluded even without a published live row; resumed sessio
   const current = { sessionFile: "/synthetic/./current.jsonl" };
   expect(recentSessions(history, live, current).sessions).toHaveLength(2);
   live.sessions.push({ ...row, sessionId: "resumed" });
-  expect(recentSessions(history, live, current).sessions.map((s) => s.sessionId)).toEqual(["older"]);
+  expect(recentSessions(history, live, current).sessions.map((s) => s.sessionId)).toEqual([
+    "older",
+  ]);
 });

@@ -2,7 +2,8 @@ import { readdirSync, readFileSync, readlinkSync, statSync } from "node:fs";
 import type { Overview } from "./core/types";
 
 /** General limitation, not an error encountered by an individual scan. */
-export const PROCESS_DISCOVERY_LIMITATION = "Process-only discovery recognizes exact 'pi' titles; unconnected Node launchers and in-process agents may be omitted.";
+export const PROCESS_DISCOVERY_LIMITATION =
+  "Process-only discovery recognizes exact 'pi' titles; unconnected Node launchers and in-process agents may be omitted.";
 
 /** Conservative Linux fallback: only exact Pi process titles, never argv/env. */
 export function discoverSessions(procRoot = "/proc", platform = process.platform): Overview {
@@ -27,9 +28,17 @@ export function discoverSessions(procRoot = "/proc", platform = process.platform
       const birth = fields[19];
       if (!birth || after.slice(after.lastIndexOf(")") + 2).split(" ")[19] !== birth) continue;
       overview.sessions.push({
-        instanceId: `process-${pid}-${birth}`, pid: Number(pid), cwd,
-        sessionId: null, name: null, model: null, thinking: null,
-        activity: "unknown", evidence: "unmatched", freshness: "unknown", activeTools: [],
+        instanceId: `process-${pid}-${birth}`,
+        pid: Number(pid),
+        cwd,
+        sessionId: null,
+        name: null,
+        model: null,
+        thinking: null,
+        activity: "unknown",
+        evidence: "unmatched",
+        freshness: "unknown",
+        activeTools: [],
       });
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code;

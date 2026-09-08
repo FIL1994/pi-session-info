@@ -7,10 +7,15 @@ import { readHistory, type HistoryProgress } from "../src/history/reader";
 
 const roots: string[] = [];
 async function fixture() {
-  const root = await mkdtemp(join(tmpdir(), "pi-history-")); roots.push(root); return root;
+  const root = await mkdtemp(join(tmpdir(), "pi-history-"));
+  roots.push(root);
+  return root;
 }
-afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }); });
-const header = (id = "fixture") => JSON.stringify({ type: "session", version: 3, id, cwd: "/synthetic/project" }) + "\n";
+afterEach(async () => {
+  for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true });
+});
+const header = (id = "fixture") =>
+  JSON.stringify({ type: "session", version: 3, id, cwd: "/synthetic/project" }) + "\n";
 const info = (name: string) => JSON.stringify({ type: "session_info", name }) + "\n";
 const read = (root: string) => readHistory({ agentDir: root, directories: [root] });
 
@@ -19,7 +24,16 @@ describe("readHistory", () => {
     const root = await fixture();
     const values = ["/synthetic/parent.jsonl", null, undefined, 42, "x".repeat(4097)];
     for (const [i, parentSession] of values.entries()) {
-      await writeFile(join(root, `${i}.jsonl`), JSON.stringify({ type: "session", version: 3, id: String(i), cwd: "/synthetic", parentSession }) + "\n");
+      await writeFile(
+        join(root, `${i}.jsonl`),
+        JSON.stringify({
+          type: "session",
+          version: 3,
+          id: String(i),
+          cwd: "/synthetic",
+          parentSession,
+        }) + "\n",
+      );
     }
     const result = await read(root);
     expect(result.sessions).toHaveLength(5);
@@ -33,7 +47,11 @@ describe("readHistory", () => {
     await writeFile(join(root, "two.jsonl"), header("two"));
     await writeFile(join(root, "bad.jsonl"), "PRIVATE CONTENT\n");
     const updates: HistoryProgress[] = [];
-    const result = await readHistory({ agentDir: root, directories: [root], onProgress: (progress) => updates.push(progress) });
+    const result = await readHistory({
+      agentDir: root,
+      directories: [root],
+      onProgress: (progress) => updates.push(progress),
+    });
     expect(updates[0]).toEqual({ phase: "scanning", directories: 0, files: 0, sessions: 0 });
     expect(updates.at(-1)).toEqual({ phase: "sorting", directories: 2, files: 3, sessions: 2 });
     expect(result.sessions).toHaveLength(2);
@@ -42,10 +60,17 @@ describe("readHistory", () => {
     expect(updates.every((p, i) => i === 0 || p.files >= updates[i - 1]!.files)).toBe(true);
     const cancelled = new AbortController();
     const stopped: HistoryProgress[] = [];
-    await expect(readHistory({ agentDir: root, directories: [root], signal: cancelled.signal, onProgress: (progress) => {
-      stopped.push(progress);
-      if (progress.files === 1) cancelled.abort();
-    } })).rejects.toThrow();
+    await expect(
+      readHistory({
+        agentDir: root,
+        directories: [root],
+        signal: cancelled.signal,
+        onProgress: (progress) => {
+          stopped.push(progress);
+          if (progress.files === 1) cancelled.abort();
+        },
+      }),
+    ).rejects.toThrow();
     expect(stopped.at(-1)?.files).toBe(1);
     expect(stopped.some((p) => p.phase === "sorting")).toBe(false);
   });
@@ -54,16 +79,25 @@ describe("readHistory", () => {
     await writeFile(join(root, "session.jsonl"), header() + info("Saved").repeat(1000));
     const controller = new AbortController();
     let yields = 0;
-    await expect(readHistory({ agentDir: root, directories: [root], signal: controller.signal,
-      yieldToUI: async () => { yields++; controller.abort(); },
-    })).rejects.toThrow();
+    await expect(
+      readHistory({
+        agentDir: root,
+        directories: [root],
+        signal: controller.signal,
+        yieldToUI: async () => {
+          yields++;
+          controller.abort();
+        },
+      }),
+    ).rejects.toThrow();
     expect(yields).toBe(1);
     expect((await read(root)).sessions[0]?.name).toBe("Saved");
   });
   test("pre-aborted and in-flight scans reject rather than publishing partial snapshots", async () => {
     const root = await fixture();
     await writeFile(join(root, "session.jsonl"), header());
-    const stopped = new AbortController(); stopped.abort();
+    const stopped = new AbortController();
+    stopped.abort();
     await expect(readHistory({ agentDir: root, signal: stopped.signal })).rejects.toThrow();
     const active = new AbortController();
     const reading = readHistory({ agentDir: root, directories: [root], signal: active.signal });
@@ -78,12 +112,18 @@ describe("readHistory", () => {
     await mkdir(project, { recursive: true });
     const old = join(project, "old.jsonl");
     const newer = join(project, "new.jsonl");
-    await writeFile(old, JSON.stringify({ type: "session", version: 3, id: "old", cwd: "/p" }) + "\n");
-    await writeFile(newer, [
-      JSON.stringify({ type: "session", version: 3, id: "new", cwd: "/p" }),
-      JSON.stringify({ type: "session_info", name: "first" }),
-      JSON.stringify({ type: "session_info", name: "latest" }),
-    ].join("\n") + "\n");
+    await writeFile(
+      old,
+      JSON.stringify({ type: "session", version: 3, id: "old", cwd: "/p" }) + "\n",
+    );
+    await writeFile(
+      newer,
+      [
+        JSON.stringify({ type: "session", version: 3, id: "new", cwd: "/p" }),
+        JSON.stringify({ type: "session_info", name: "first" }),
+        JSON.stringify({ type: "session_info", name: "latest" }),
+      ].join("\n") + "\n",
+    );
     const now = new Date("2026-01-01T00:00:00Z");
     await utimes(old, new Date(now.getTime() - 2000), new Date(now.getTime() - 2000));
     await utimes(newer, now, now);
@@ -98,15 +138,24 @@ describe("readHistory", () => {
     const a = join(root, "a.jsonl");
     const b = join(root, "b.jsonl");
     const line = JSON.stringify({ type: "session", version: 3, id: "same", cwd: "/p" });
-    await writeFile(a, line + "\n"); await writeFile(b, line + "\n");
+    await writeFile(a, line + "\n");
+    await writeFile(b, line + "\n");
     const result = await readHistory({ agentDir: root, directories: [root] });
     expect(result.sessions).toHaveLength(1);
   });
 
   test("missing roots are valid; non-directories and malformed headers are reported", async () => {
     const root = await fixture();
-    expect(await readHistory({ agentDir: join(root, "missing") })).toEqual({ sessions: [], warnings: [] });
-    for (const [i, content] of ["SECRET invalid", header().trimEnd(), header().replace('"version":3', '"version":99'), header().replace('"cwd":"/synthetic/project"', '"cwd":null')].entries()) {
+    expect(await readHistory({ agentDir: join(root, "missing") })).toEqual({
+      sessions: [],
+      warnings: [],
+    });
+    for (const [i, content] of [
+      "SECRET invalid",
+      header().trimEnd(),
+      header().replace('"version":3', '"version":99'),
+      header().replace('"cwd":"/synthetic/project"', '"cwd":null'),
+    ].entries()) {
       await writeFile(join(root, `${i}.jsonl`), content);
     }
     const result = await read(root);
@@ -117,7 +166,10 @@ describe("readHistory", () => {
 
   test("partial final records are ignored, including valid JSON without LF", async () => {
     const root = await fixture();
-    await writeFile(join(root, "session.jsonl"), header() + info("Persisted") + info("Not complete").trimEnd());
+    await writeFile(
+      join(root, "session.jsonl"),
+      header() + info("Persisted") + info("Not complete").trimEnd(),
+    );
     const result = await read(root);
     expect(result.sessions[0]?.name).toBe("Persisted");
     expect(result.warnings.join(" ")).toContain("incomplete final");
@@ -125,7 +177,10 @@ describe("readHistory", () => {
 
   test("malformed lines do not leak contents or falsely retain an earlier name", async () => {
     const root = await fixture();
-    await writeFile(join(root, "session.jsonl"), header() + info("Before") + "SECRET invalid record\n");
+    await writeFile(
+      join(root, "session.jsonl"),
+      header() + info("Before") + "SECRET invalid record\n",
+    );
     const result = await read(root);
     expect(result.sessions[0]?.name).toBeNull();
     expect(result.warnings.join(" ")).toContain("malformed complete");
@@ -135,7 +190,11 @@ describe("readHistory", () => {
   test("large image-bearing records use a bounded tail and support renamed/cleared names", async () => {
     const root = await fixture();
     const path = join(root, "large.jsonl");
-    const content = header() + info("Old") + JSON.stringify({ type: "message", message: { content: "X".repeat(400_000) } }) + "\n";
+    const content =
+      header() +
+      info("Old") +
+      JSON.stringify({ type: "message", message: { content: "X".repeat(400_000) } }) +
+      "\n";
     await writeFile(path, content + info("Latest"));
     const result = await read(root);
     expect(result.sessions[0]?.name).toBe("Latest");
@@ -157,7 +216,9 @@ describe("readHistory", () => {
     const result = await read(root);
     expect(result.sessions).toEqual([]);
     expect(result.warnings.length).toBeGreaterThan(0);
-    expect((await readHistory({ agentDir: root, directories: [join(root, "alias")] })).sessions).toEqual([]);
+    expect(
+      (await readHistory({ agentDir: root, directories: [join(root, "alias")] })).sessions,
+    ).toEqual([]);
   });
 
   test("normalized duplicate directories are scanned once", async () => {
@@ -165,16 +226,23 @@ describe("readHistory", () => {
     const project = join(root, "sessions", "project");
     await mkdir(project, { recursive: true });
     await writeFile(join(project, "one.jsonl"), header() + "malformed\n");
-    const result = await readHistory({ agentDir: root, directories: [project, `${project}/../project`] });
+    const result = await readHistory({
+      agentDir: root,
+      directories: [project, `${project}/../project`],
+    });
     expect(result.sessions).toHaveLength(1);
-    expect(result.warnings).toEqual(["History: 1 files with malformed complete records (metadata may be incomplete)."]);
+    expect(result.warnings).toEqual([
+      "History: 1 files with malformed complete records (metadata may be incomplete).",
+    ]);
   });
 
   test("file cap is global across projects and warns of incomplete newest coverage", async () => {
     const root = await fixture();
     for (const project of ["a", "b"]) {
-      const dir = join(root, project); await mkdir(dir);
-      for (let i = 0; i < 1001; i++) await writeFile(join(dir, `${i}.jsonl`), header(`${project}-${i}`));
+      const dir = join(root, project);
+      await mkdir(dir);
+      for (let i = 0; i < 1001; i++)
+        await writeFile(join(dir, `${i}.jsonl`), header(`${project}-${i}`));
     }
     const result = await read(root);
     expect(result.sessions).toHaveLength(2000);
@@ -197,8 +265,12 @@ describe("readHistory", () => {
       delete process.env.PI_CODING_AGENT_SESSION_DIR;
       expect((await readHistory()).sessions.map((s) => s.sessionId)).toEqual(["normal"]);
       process.env.PI_CODING_AGENT_SESSION_DIR = custom;
-      expect((await readHistory({ directories: [extra] })).sessions.map((s) => s.sessionId).sort()).toEqual(["custom", "extra"]);
-      expect((await readHistory({ agentDir: root })).sessions.map((s) => s.sessionId)).toEqual(["normal"]);
+      expect(
+        (await readHistory({ directories: [extra] })).sessions.map((s) => s.sessionId).sort(),
+      ).toEqual(["custom", "extra"]);
+      expect((await readHistory({ agentDir: root })).sessions.map((s) => s.sessionId)).toEqual([
+        "normal",
+      ]);
     } finally {
       if (previousAgent === undefined) delete process.env.PI_CODING_AGENT_DIR;
       else process.env.PI_CODING_AGENT_DIR = previousAgent;

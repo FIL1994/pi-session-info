@@ -8,7 +8,6 @@ test("help explains the scaffold boundary", () => {
   expect(result.stdout).toContain("Linux process discovery");
 });
 
-
 test("demo renders readable status without diagnostic columns", () => {
   const result = runCli(["--demo"]);
   expect(result.code).toBe(0);
@@ -36,6 +35,7 @@ test("unsupported flags and positional arguments fail", () => {
 });
 
 test("terminal output neutralizes control sequences and line injection", () => {
-  expect(terminalText("hello\x1b]52;secret\x07\nworld\x9b"))
-    .toBe("hello\\u001b]52;secret\\u0007\\u000aworld\\u009b");
+  expect(terminalText("hello\x1b]52;secret\x07\nworld\x9b")).toBe(
+    "hello\\u001b]52;secret\\u0007\\u000aworld\\u009b",
+  );
 });

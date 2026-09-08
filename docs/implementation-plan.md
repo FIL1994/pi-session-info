@@ -136,20 +136,20 @@ conversation/subagent count. Never call every recently modified JSONL a live age
 
 Registry schema v1 should include:
 
-| Field | Semantics |
-| --- | --- |
-| schemaVersion | Integer protocol version; reject unsupported versions |
-| instanceId, sequence | Activation UUID and monotonically increasing write sequence |
-| pid, processIdentity | PID and platform birth identifier; include boot identity on Linux |
-| startedAt, heartbeatAt | Publisher start and latest successful heartbeat, UTC ISO |
-| activityAt | Last meaningful lifecycle activity; heartbeats do not update it |
-| sessionId, sessionFile, leafId | Exact live mapping, nullable for unavailable values |
-| cwd, sessionName | Current Pi session cwd/name, not merely OS launch cwd |
-| mode | TUI/RPC/JSON/print if exposed by the supported host |
-| provider, model, thinking | Current selected values; unknown remains null |
-| activity | working/tool/waiting-user/idle/unknown |
-| activeTools | Tool call IDs and names only, supporting concurrent tools |
-| capabilities | Which lifecycle fields the host adapter can actually observe |
+| Field                          | Semantics                                                         |
+| ------------------------------ | ----------------------------------------------------------------- |
+| schemaVersion                  | Integer protocol version; reject unsupported versions             |
+| instanceId, sequence           | Activation UUID and monotonically increasing write sequence       |
+| pid, processIdentity           | PID and platform birth identifier; include boot identity on Linux |
+| startedAt, heartbeatAt         | Publisher start and latest successful heartbeat, UTC ISO          |
+| activityAt                     | Last meaningful lifecycle activity; heartbeats do not update it   |
+| sessionId, sessionFile, leafId | Exact live mapping, nullable for unavailable values               |
+| cwd, sessionName               | Current Pi session cwd/name, not merely OS launch cwd             |
+| mode                           | TUI/RPC/JSON/print if exposed by the supported host               |
+| provider, model, thinking      | Current selected values; unknown remains null                     |
+| activity                       | working/tool/waiting-user/idle/unknown                            |
+| activeTools                    | Tool call IDs and names only, supporting concurrent tools         |
+| capabilities                   | Which lifecycle fields the host adapter can actually observe      |
 
 Keep liveness, freshness, and activity separate in the presentation model.
 Evidence values are extension, inferred, or unmatched. An expired heartbeat means
@@ -167,20 +167,20 @@ Verify exact APIs against the selected supported Pi release before coding.
 Current documentation exposes the events below, but other installed versions
 may differ; record a compatibility matrix rather than guessing support.
 
-| Event | Intended effect |
-| --- | --- |
-| session_start | Create activation state, capture identity, publish, start heartbeat |
-| agent_start | Set working; capture current metadata |
-| tool_execution_start | Add call ID/name to active map |
-| tool_execution_end | Remove only that call ID; other tools may still run |
-| ui_prompt_start/end | Track explicit waiting-for-user span, then restore derived state |
-| agent_end | Do not assume idle: retries, compaction, or follow-ups may remain |
-| agent_settled | Derive idle using current host idle state |
-| session_info_changed | Refresh name |
-| model_select / thinking_level_select | Refresh selected model and effective reasoning |
-| session_tree | Refresh leaf and metadata |
-| session_before_compact / compact / compact_failed | Track compaction without becoming stuck on cancellation |
-| session_shutdown | Stop timer, drain/close publisher, remove only own activation record |
+| Event                                             | Intended effect                                                      |
+| ------------------------------------------------- | -------------------------------------------------------------------- |
+| session_start                                     | Create activation state, capture identity, publish, start heartbeat  |
+| agent_start                                       | Set working; capture current metadata                                |
+| tool_execution_start                              | Add call ID/name to active map                                       |
+| tool_execution_end                                | Remove only that call ID; other tools may still run                  |
+| ui_prompt_start/end                               | Track explicit waiting-for-user span, then restore derived state     |
+| agent_end                                         | Do not assume idle: retries, compaction, or follow-ups may remain    |
+| agent_settled                                     | Derive idle using current host idle state                            |
+| session_info_changed                              | Refresh name                                                         |
+| model_select / thinking_level_select              | Refresh selected model and effective reasoning                       |
+| session_tree                                      | Refresh leaf and metadata                                            |
+| session_before_compact / compact / compact_failed | Track compaction without becoming stuck on cancellation              |
+| session_shutdown                                  | Stop timer, drain/close publisher, remove only own activation record |
 
 Reducer priority: waiting-user, then active tools, then host working, then idle;
 unknown when required signals are unavailable. Lifecycle callbacks observe only:
@@ -268,6 +268,7 @@ instructions, and avoid reading image payloads into presentation state.
 Task descriptions are excerpts or user-assigned names, not AI-generated summaries.
 
 Usage accounting:
+
 - Separate active-branch context estimates from cumulative full-file usage.
 - Include assistant usage, tool-reported nested usage, and summary-entry usage.
 - Do not count retainedTail copies a second time.
@@ -392,6 +393,7 @@ and model/thinking notifications on each declared compatible Pi version.
 Prefer a documented minimum version over silently unreliable compatibility.
 
 Useful upstream references (verify against the version being targeted):
+
 - https://github.com/earendil-works/pi-mono/blob/main/packages/coding-agent/docs/extensions.md
 - https://github.com/earendil-works/pi-mono/blob/main/packages/coding-agent/docs/session-format.md
 - https://github.com/earendil-works/pi-mono/blob/main/packages/coding-agent/docs/packages.md

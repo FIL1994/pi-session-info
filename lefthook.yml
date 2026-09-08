@@ -1,3 +1,13 @@
+pre-commit:
+  parallel: true
+  commands:
+    format:
+      glob: "*.{js,jsx,mjs,cjs,ts,tsx,mts,cts,json,jsonc,json5,yml,yaml,md,mdx,css,scss,html,vue}"
+      run: bun run oxfmt --check {staged_files}
+    lint:
+      glob: "*.{js,jsx,mjs,cjs,ts,tsx,mts,cts,vue}"
+      run: bun run oxlint --deny-warnings {staged_files}
+
 commit-msg:
   commands:
     conventional-commit:
