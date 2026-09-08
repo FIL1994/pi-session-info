@@ -74,7 +74,7 @@ test("Recent errors and empty history retain navigation and retry", async () => 
     return { sessions: [], warnings: [] };
   });
   await app.run();
-  expect(app.dialogs[1]?.title).toContain("Could not read saved sessions");
+  expect(app.dialogs[1]?.title).toContain("Could not load sessions");
   expect(app.dialogs[1]?.title).not.toContain("secret");
   expect(app.dialogs[2]?.title).toContain("No recent saved sessions found");
   expect(app.dialogs[2]?.choices).not.toContain("Show more");
@@ -103,7 +103,8 @@ test("pin/unpin changes only extension metadata and Pinned only updates immediat
   expect(app.dialogs[5]?.choices).toContain("Unpin session");
   expect(app.dialogs[6]?.title).toContain("No pinned sessions available");
   expect(ids.size).toBe(0);
-  expect(app.dialogs[1]?.title).toContain("Use /resume");
+  expect(app.dialogs[1]?.choices).toContain("Coverage details");
+  expect(app.notifications).toEqual(["Session pinned.", "Session unpinned."]);
   expect(app.dialogs[2]?.title).toContain(saved[0]!.modifiedAt);
   expect(app.dialogs[1]?.choices[0]).toContain("saved ");
   expect(app.dialogs[1]?.choices[0]).not.toContain(saved[0]!.modifiedAt);
@@ -125,7 +126,8 @@ test("pin read/write failures keep browsing available without leaking errors", a
   const failedRead = setup(["Recent", "first", "Back", "Close"], false, async () => ({ sessions: saved, warnings: [] }),
     { isPinned() { throw Error("secret"); }, setPinned() {} });
   await failedRead.run();
-  expect(failedRead.dialogs[1]?.title).toContain("pin metadata could not be read");
+  expect(failedRead.dialogs[1]?.title).toContain("coverage notes");
+  expect(failedRead.notifications).toContain("Could not read pin metadata. Check the private pins directory.");
   expect(failedRead.dialogs[2]?.choices).toEqual(["Back"]);
   const failedWrite = setup(["Recent", "first", "Pin session", "Close"], false, async () => ({ sessions: saved, warnings: [] }),
     { isPinned: () => false, setPinned() { throw Error("secret"); } });
@@ -136,14 +138,14 @@ test("pin read/write failures keep browsing available without leaking errors", a
 test("picker offers read-only details and refresh", async () => {
   const app = setup(["first", "Back", "Refresh", "Close"]); await app.run();
   expect(app.dialogs[1]?.title).toContain("Directory:");
-  expect(app.scans()).toBe(3);
+  expect(app.scans()).toBe(2); // Returning from details retains the snapshot.
 });
 
 test("invalid args, no UI, and discovery errors are safe", async () => {
   const bad = setup(); await bad.run("extra"); expect(bad.scans()).toBe(0);
   expect(bad.notifications).toEqual(["Usage: /sessions"]);
   const headless = setup(); headless.ctx.hasUI = false; await headless.run(); expect(headless.scans()).toBe(0);
-  const failed = setup([], true); await failed.run(); expect(failed.notifications).toHaveLength(1);
+  const failed = setup([], true); await failed.run(); expect(failed.dialogs[0]?.title).toContain("Could not load sessions");
 });
 
 test("picker stops instead of rescanning when the prompt no longer blocks", async () => {

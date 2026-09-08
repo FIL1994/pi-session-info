@@ -15,6 +15,17 @@ const info = (name: string) => JSON.stringify({ type: "session_info", name }) + 
 const read = (root: string) => readHistory({ agentDir: root, directories: [root] });
 
 describe("readHistory", () => {
+  test("pre-aborted and in-flight scans reject rather than publishing partial snapshots", async () => {
+    const root = await fixture();
+    await writeFile(join(root, "session.jsonl"), header());
+    const stopped = new AbortController(); stopped.abort();
+    await expect(readHistory({ agentDir: root, signal: stopped.signal })).rejects.toThrow();
+    const active = new AbortController();
+    const reading = readHistory({ agentDir: root, directories: [root], signal: active.signal });
+    active.abort();
+    await expect(reading).rejects.toThrow();
+    expect((await read(root)).sessions).toHaveLength(1);
+  });
   test("reads bounded session metadata and orders by file mtime", async () => {
     const root = await fixture();
     const project = join(root, "--project--");

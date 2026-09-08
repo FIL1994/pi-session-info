@@ -27,6 +27,23 @@ sessions do not appear merely because they are pinned.
 
 Search, Current Folder / All filtering, and resuming remain in native **`/resume`**.
 
+## Dashboard navigation
+
+Tabs, counts, snapshot age and actions stay visible while rows scroll. Wide
+terminals show aligned project/name/status-or-age columns; narrow terminals
+prioritize names. **c** opens scrollable coverage details instead of repeating
+lengthy warnings in the main view.
+
+Use **↑↓** / **Page Up / Down** to navigate, **Enter** for details, **r** to
+refresh, **m** for more history, **p** for pinned-only Recent, and **Escape** to
+close. Each tab preserves selection by session identity, including after refresh.
+
+While loading, previous rows remain visible and **Escape** cancels. Failed or
+cancelled refreshes retain the previous snapshot and show retry guidance. Ages
+repaint periodically; discovery still requires Refresh. Process discovery is
+synchronous; history scanning cooperatively cancels at I/O boundaries. RPC uses
+equivalent action menus and a cancellable loading dialog.
+
 Every existing Pi process must load the extension to publish live status. If it
 already loads this checkout, run `/reload` there; reloading only the viewer does
 not instrument other processes. Nothing changes Pi configuration automatically.

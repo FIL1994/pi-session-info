@@ -2,6 +2,14 @@
 
 ## Incremental implementation update
 
+The dashboard-polish slice adds responsive columns, fixed TUI headers/actions,
+scrollable coverage notes, per-tab identity-based selection, and timestamped
+snapshots. Cancellable history reads keep previous rows visible while loading;
+failed/cancelled loads cannot replace the snapshot with partial/late results.
+Only display ages repaint periodically; inventory remains manually refreshed.
+Synchronous Linux process scans are not interruptible mid-scan. This does not
+claim watch-mode or all M5 gates. Native `/resume` features remain native.
+
 Recent now displays relative saved ages (exact timestamps remain in details).
 Session favorites are extension-owned, persistent ID-only pin files under XDG
 state, separate from transcripts and the live registry. Detail actions pin/unpin;

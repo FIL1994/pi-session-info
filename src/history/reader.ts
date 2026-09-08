@@ -10,7 +10,7 @@ export interface SavedSession {
   name: string | null;
   modifiedAt: string;
 }
-export interface HistorySnapshot { sessions: SavedSession[]; warnings: string[] }
+export interface HistorySnapshot { sessions: SavedSession[]; warnings: string[]; failed?: boolean }
 
 const MAX_ENTRIES = 10_000;
 const MAX_FILES = 2_000;
@@ -28,7 +28,9 @@ function expand(path: string): string {
 }
 
 /** Read-only v3 metadata. Bounded head/tail windows never retain transcript content. */
-export async function readHistory(options: { directories?: string[]; agentDir?: string } = {}): Promise<HistorySnapshot> {
+export async function readHistory(options: { directories?: string[]; agentDir?: string; signal?: AbortSignal } = {}): Promise<HistorySnapshot> {
+  const check = () => options.signal?.throwIfAborted();
+  check();
   const counts = new Map<string, number>();
   const note = (reason: string) => counts.set(reason, (counts.get(reason) ?? 0) + 1);
   const sessions = new Map<string, SavedSession>();
@@ -39,6 +41,7 @@ export async function readHistory(options: { directories?: string[]; agentDir?: 
   let limited = false;
 
   async function inspect(path: string): Promise<void> {
+    check();
     if (seenFiles.has(path)) return;
     seenFiles.add(path);
     if (files >= MAX_FILES) { limited = true; return; }
@@ -54,6 +57,7 @@ export async function readHistory(options: { directories?: string[]; agentDir?: 
           const buffer = Buffer.alloc(size);
           let offset = 0;
           while (offset < size) {
+            check();
             const { bytesRead } = await fd.read(buffer, offset, size - offset, start + offset);
             if (!bytesRead) throw Error("changed file");
             offset += bytesRead;
@@ -100,10 +104,11 @@ export async function readHistory(options: { directories?: string[]; agentDir?: 
         const old = sessions.get(row.sessionId);
         if (!old || row.modifiedAt > old.modifiedAt || (row.modifiedAt === old.modifiedAt && path < old.sessionFile)) sessions.set(row.sessionId, row);
       } finally { await fd.close(); }
-    } catch { note("unreadable, unsafe, or changed session files skipped"); }
+    } catch { check(); note("unreadable, unsafe, or changed session files skipped"); }
   }
 
   async function scan(root: string, descend: boolean): Promise<void> {
+    check();
     if (limited || seenDirs.has(root)) return;
     seenDirs.add(root);
     try {
@@ -114,6 +119,7 @@ export async function readHistory(options: { directories?: string[]; agentDir?: 
       }
       const dir = await opendir(root);
       for await (const entry of dir) {
+        check();
         if (limited) break;
         if (entries >= MAX_ENTRIES) { limited = true; break; }
         entries++;
@@ -122,6 +128,7 @@ export async function readHistory(options: { directories?: string[]; agentDir?: 
         else if (entry.name.endsWith(".jsonl")) await inspect(path);
       }
     } catch (error) {
+      check();
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") note("history directories could not be read");
     }
   }
@@ -135,8 +142,10 @@ export async function readHistory(options: { directories?: string[]; agentDir?: 
   }
   const warnings = [...counts].map(([reason, count]) => `History: ${count} ${reason}.`);
   if (limited) warnings.push(`History scan limit reached (${MAX_ENTRIES} entries / ${MAX_FILES} files); newest-session coverage may be incomplete.`);
+  check();
   return {
     sessions: [...sessions.values()].sort((a, b) => Date.parse(b.modifiedAt) - Date.parse(a.modifiedAt) || a.sessionFile.localeCompare(b.sessionFile)),
     warnings,
+    ...(sessions.size === 0 && counts.size > 0 ? { failed: true } : {}),
   };
 }

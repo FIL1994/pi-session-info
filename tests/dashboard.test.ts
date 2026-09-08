@@ -1,0 +1,63 @@
+import { expect, test } from "bun:test";
+import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import { matchesKey, type Component, type KeyId } from "@earendil-works/pi-tui";
+import { registerSessionsCommand, type SessionsDeps } from "../src/extension/index";
+import { demoOverview } from "../src/demo";
+
+async function dashboard(deps: SessionsDeps, keys: string[][]) {
+  let handler!: (args: string, ctx: ExtensionCommandContext) => Promise<void>;
+  const pages: string[] = [], loading: string[] = [];
+  const actions: Record<string, KeyId> = { "tui.select.cancel": "escape", "tui.select.confirm": "enter", "tui.select.down": "down", "tui.select.up": "up" };
+  const pi = { registerCommand(_name: string, command: { handler: typeof handler }) { handler = command.handler; } } as unknown as ExtensionAPI;
+  registerSessionsCommand(pi, { pins: { isPinned: () => false, setPinned() {} }, now: () => 1000, ...deps });
+  const ctx = { mode: "tui", hasUI: true, ui: {
+    notify() {}, select: async () => "Back",
+    custom: (factory: (...args: any[]) => Component) => new Promise((resolve, reject) => {
+      try {
+        const component = factory({ terminal: { rows: 24 }, requestRender() {} }, { fg: (_: string, s: string) => s },
+          { matches: (data: string, action: string) => actions[action] ? matchesKey(data, actions[action]) : false }, resolve);
+        const output = component.render(120).join("\n");
+        if (output.includes("Refreshing running sessions") || output.includes("Loading saved sessions")) { loading.push(output); return; }
+        pages.push(output);
+        for (const key of keys.shift() ?? ["\u001b"]) component.handleInput?.(key);
+      } catch (error) { reject(error); }
+    }),
+  } } as unknown as ExtensionCommandContext;
+  await handler("", ctx);
+  return { pages, loading };
+}
+
+test("Running selection survives details, reordering refresh, and a tab round trip", async () => {
+  let scans = 0;
+  const initial = demoOverview(); initial.sessions = initial.sessions.slice(0, 2);
+  const reordered = { ...initial, sessions: [...initial.sessions].reverse() };
+  const result = await dashboard({ overview: () => ++scans === 1 ? initial : reordered, history: async () => ({ sessions: [], warnings: [] }) },
+    [["\u001b[B", "\r"], ["r"], ["\t"], ["\t"], ["\u001b"]]);
+  for (const index of [1, 2, 4]) expect(result.pages[index]?.split("\n").find((s) => s.startsWith("→"))).toContain("Review workspace");
+  expect(result.loading[1]).toContain("Review workspace");
+  expect(result.loading[1]).toContain("Build playback");
+});
+
+test("refresh failure retains rows, selection, and prior timestamp with retry notice", async () => {
+  let scans = 0;
+  const result = await dashboard({ overview: () => { if (++scans > 1) throw Error("private failure"); return demoOverview(); } },
+    [["\u001b[B", "r"], ["\u001b"]]);
+  expect(result.pages[1]).toContain("Refresh failed");
+  expect(result.pages[1]).toContain("Updated just now");
+  expect(result.pages[1]).toContain("Review workspace");
+  expect(result.pages[1]?.split("\n").find((s) => s.startsWith("→"))).toContain("Review workspace");
+  expect(result.pages.join(" ")).not.toContain("private failure");
+});
+
+test("Show more focuses the first new identity and a failed history refresh retains rows", async () => {
+  let reads = 0;
+  const sessions = Array.from({ length: 21 }, (_, i) => ({ sessionId: `saved-${i}`, sessionFile: `/fixture/${i}`, cwd: "/fixture", name: `Task-${i}`, modifiedAt: new Date(1000 - i).toISOString() }));
+  const result = await dashboard({ overview: demoOverview, history: async () => {
+    if (++reads > 1) return { sessions: [], warnings: ["unreadable"], failed: true };
+    return { sessions, warnings: [] };
+  } }, [["\t"], ["m"], ["r"], ["\u001b"]]);
+  expect(result.pages[2]?.split("\n").find((s) => s.startsWith("→"))).toContain("Task-10");
+  expect(result.pages[3]).toContain("Refresh failed");
+  expect(result.pages[3]).toContain("20 of 21");
+  expect(result.loading.at(-1)).toContain("Task-10");
+});

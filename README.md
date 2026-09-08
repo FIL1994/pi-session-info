@@ -43,6 +43,27 @@ settings are modified. Pin storage is created only when you explicitly pin.
 Use native **`/resume`** for search, Current Folder / All filtering, and resuming;
 the extension does not duplicate those controls or automatically switch sessions.
 
+### Dashboard controls
+
+The TUI keeps tabs, a compact summary, snapshot age, and actions outside the
+scrolling rows. Columns adapt to terminal width, prioritizing session names on
+narrow screens. Long explanations live in the scrollable **Coverage details**
+panel rather than filling the overview.
+
+- **Tab / ← / →**: switch tabs; each tab keeps its selected session.
+- **↑ / ↓**, **Page Up / Down**: navigate; **Enter**: details.
+- **r**: refresh; **m**: show 10 more; **p**: toggle pinned-only Recent.
+- **c**: coverage details; **Escape**: close, or cancel an active load.
+
+Loading paints immediately and keeps the previous rows visible. Cancellation or
+failed refresh leaves the prior snapshot and its timestamp intact, with a retry
+notice. Selection follows session identity through reordering, details, and tab
+switches; Show more selects the first newly revealed session. Pin changes get a
+brief confirmation. Display ages repaint every 15 seconds, but data is scanned
+only on initial load / Refresh—not a watch loop. Linux process discovery itself
+is a small synchronous scan; cancellation takes effect at history I/O boundaries.
+RPC clients receive equivalent menus and a cancellable loading dialog.
+
 History is loaded lazily and cached until Refresh or closing `/sessions`. It
 does not display prompts or tool outputs and does not infer idle from old files.
 Use `/name` to give sessions recognizable names, and `/resume` to continue them.
