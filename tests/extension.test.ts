@@ -35,18 +35,20 @@ const saved = Array.from({ length: 25 }, (_, i) => ({
   name: `Task ${i}`, modifiedAt: new Date(1_000_000 - i * 1000).toISOString(),
 }));
 
-test("Recent starts at ten, Show more adds ten, and history is cached until refresh", async () => {
+test("Recent starts at fifteen, Show more adds ten, and history is cached until refresh", async () => {
   let reads = 0;
-  const app = setup(["Recent", "Show more", "Show more", "Refresh", "Running", "Close"], false, async () => {
+  const app = setup(["Recent", "Show more", "Refresh", "Running", "Close"], false, async () => {
     reads++; return { sessions: saved, warnings: [] };
   });
   await app.run();
   expect(reads).toBe(2);
-  expect(app.dialogs[1]?.title).toContain("10 of 25");
-  expect(app.dialogs[2]?.title).toContain("20 of 25");
+  expect(app.dialogs[1]?.title).toContain("15 of 25");
+  expect(app.dialogs[1]?.choices.join("\n")).toContain("Task 14 ·");
+  expect(app.dialogs[1]?.choices.join("\n")).not.toContain("Task 15 ·");
+  expect(app.dialogs[2]?.title).toContain("25 of 25");
   expect(app.dialogs[3]?.title).toContain("25 of 25");
   expect(app.dialogs[3]?.choices).not.toContain("Show more");
-  expect(app.dialogs[5]?.title).toContain("[Running]");
+  expect(app.dialogs[4]?.title).toContain("[Running]");
 });
 
 test("Running does not read history", async () => {
@@ -80,15 +82,15 @@ test("Recent errors and empty history retain navigation and retry", async () => 
   expect(app.dialogs[2]?.choices).not.toContain("Show more");
 });
 
-test("Recent excludes the viewer's session before selecting the first ten", async () => {
-  const app = setup(["Recent", "Close"], false, async () => ({ sessions: saved.slice(0, 11), warnings: [] }));
+test("Recent excludes the viewer's session before selecting the first fifteen", async () => {
+  const app = setup(["Recent", "Close"], false, async () => ({ sessions: saved.slice(0, 16), warnings: [] }));
   app.ctx.sessionManager = {
     getSessionId: () => "saved-0", getSessionFile: () => "/synthetic/0.jsonl", getSessionDir: () => "/synthetic",
   } as unknown as ExtensionCommandContext["sessionManager"];
   await app.run();
-  expect(app.dialogs[1]?.title).toContain("10 of 10");
+  expect(app.dialogs[1]?.title).toContain("15 of 15");
   expect(app.dialogs[1]?.choices.join("\n")).not.toContain("Task 0 ·");
-  expect(app.dialogs[1]?.choices.join("\n")).toContain("Task 10 ·");
+  expect(app.dialogs[1]?.choices.join("\n")).toContain("Task 15 ·");
   expect(app.dialogs[1]?.choices).not.toContain("Show more");
 });
 

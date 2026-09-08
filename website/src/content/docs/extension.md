@@ -11,7 +11,7 @@ pi -e ./src/extension/index.ts
 
 Then run `/sessions`. It shows project-first selectable rows with read-only
 details, **Refresh**, and **Close**. **Tab** or **←/→** switches between **Running**
-and **Recent**; RPC clients get menu options. Recent shows the 10 newest saved
+and **Recent**; RPC clients get menu options. Recent shows the 15 newest saved
 sessions, with **Show more** adding another 10. Exact running session IDs/files
 are excluded before paging. Rows show project, saved name (or session ID), and
 file modification time; no prompt or tool output excerpts are displayed.
@@ -20,7 +20,7 @@ and does not control sessions or add output to model context.
 
 Rows show relative saved ages; details retain exact dates. Use **Pin session** or
 **Unpin session** in details to save favorites. **Pinned only** in Recent filters
-before the 10-row limit, remains newest-first, and still excludes running sessions.
+before the 15-row limit, remains newest-first, and still excludes running sessions.
 Pins are stored separately under `$XDG_STATE_HOME/pi-session-info/pins` (default
 `~/.local/state/pi-session-info/pins`), not in transcripts. Missing or unscanned
 sessions do not appear merely because they are pinned.

@@ -4,7 +4,7 @@ import { matchesKey, type Component, type KeyId } from "@earendil-works/pi-tui";
 import { registerSessionsCommand, type SessionsDeps } from "../src/extension/index";
 import { demoOverview } from "../src/demo";
 
-async function dashboard(deps: SessionsDeps, keys: string[][]) {
+async function dashboard(deps: SessionsDeps, keys: string[][], onLoading?: (component: Component, output: string) => void) {
   let handler!: (args: string, ctx: ExtensionCommandContext) => Promise<void>;
   const pages: string[] = [], loading: string[] = [];
   const actions: Record<string, KeyId> = { "tui.select.cancel": "escape", "tui.select.confirm": "enter", "tui.select.down": "down", "tui.select.up": "up" };
@@ -17,7 +17,7 @@ async function dashboard(deps: SessionsDeps, keys: string[][]) {
         const component = factory({ terminal: { rows: 24 }, requestRender() {} }, { fg: (_: string, s: string) => s },
           { matches: (data: string, action: string) => actions[action] ? matchesKey(data, actions[action]) : false }, resolve);
         const output = component.render(120).join("\n");
-        if (output.includes("Refreshing running sessions") || output.includes("Loading saved sessions")) { loading.push(output); return; }
+        if (output.includes("Refreshing running sessions") || output.includes("Loading saved sessions")) { loading.push(output); onLoading?.(component, output); return; }
         pages.push(output);
         for (const key of keys.shift() ?? ["\u001b"]) component.handleInput?.(key);
       } catch (error) { reject(error); }
@@ -38,6 +38,29 @@ test("Running selection survives details, reordering refresh, and a tab round tr
   expect(result.loading[1]).toContain("Build playback");
 });
 
+test("switching away from an in-flight Recent load restores Running and ignores late results", async () => {
+  let component!: Component;
+  let complete!: (value: { sessions: []; warnings: string[] }) => void;
+  let signal!: AbortSignal;
+  const result = await dashboard({ overview: demoOverview, history: (options) => {
+    signal = options!.signal!;
+    return new Promise((resolve) => {
+      complete = resolve;
+      component.handleInput?.("\t");
+    });
+  } }, [["\u001b[B", "\t"], ["\t"], ["\u001b"]], (c, output) => {
+    if (output.includes("Loading saved sessions")) component = c;
+  });
+  expect(signal.aborted).toBe(true);
+  expect(result.pages[1]).toContain("[Running]");
+  expect(result.pages[1]?.split("\n").find((line) => line.startsWith("→"))).toContain("Review workspace");
+  expect(result.pages[2]).toContain("[Recent]");
+  expect(result.pages[2]).toContain("Loading cancelled");
+  complete({ sessions: [], warnings: ["late result"] });
+  await Promise.resolve();
+  expect(result.pages.join("\n")).not.toContain("late result");
+});
+
 test("refresh failure retains rows, selection, and prior timestamp with retry notice", async () => {
   let scans = 0;
   const result = await dashboard({ overview: () => { if (++scans > 1) throw Error("private failure"); return demoOverview(); } },
@@ -56,8 +79,8 @@ test("Show more focuses the first new identity and a failed history refresh reta
     if (++reads > 1) return { sessions: [], warnings: ["unreadable"], failed: true };
     return { sessions, warnings: [] };
   } }, [["\t"], ["m"], ["r"], ["\u001b"]]);
-  expect(result.pages[2]?.split("\n").find((s) => s.startsWith("→"))).toContain("Task-10");
+  expect(result.pages[2]?.split("\n").find((s) => s.startsWith("→"))).toContain("Task-15");
   expect(result.pages[3]).toContain("Refresh failed");
-  expect(result.pages[3]).toContain("20 of 21");
-  expect(result.loading.at(-1)).toContain("Task-10");
+  expect(result.pages[3]).toContain("21 of 21");
+  expect(result.loading.at(-1)).toContain("Task-15");
 });

@@ -19,7 +19,7 @@ pi -e ./src/extension/index.ts
 ```
 
 Then enter `/sessions`. Use **Tab** or **←/→** to switch between **Running** and
-**Recent** (RPC clients get equivalent menu options). Recent starts with the 10
+**Recent** (RPC clients get equivalent menu options). Recent starts with the 15
 newest saved sessions, excluding exact matches to running sessions; **Show more**
 adds another 10. Rows show the project, saved name (or session ID), and file
 modification time. Select a session for read-only details, **Refresh** to rescan,

@@ -6,8 +6,10 @@ import { formatDetails, projectLabel, relativeTime, statusLabel, terminalText } 
 import { registerLifecycle } from "./lifecycle";
 import { readHistory, type HistorySnapshot } from "../history/reader";
 import { recentSessions, savedDetails } from "../history/recent";
-import { loadSessionPage, selectSessionPage, showCoverage, type SessionPage, type SessionsTab } from "./picker";
+import { loadSessionPage, selectSessionPage, showCoverage, type LoadResult, type SessionPage, type SessionsTab } from "./picker";
 import { createPinStore, type PinStore } from "../pins";
+
+const RECENT_INITIAL_LIMIT = 15;
 
 export interface SessionsDeps {
   overview?: typeof liveOverview;
@@ -45,7 +47,7 @@ export function registerSessionsCommand(pi: ExtensionAPI, dependencies: Sessions
       if (args.trim()) { if (ctx.hasUI) ctx.ui.notify("Usage: /sessions", "warning"); return; }
       if (!ctx.hasUI) return;
       let tab: SessionsTab = "Running";
-      let limit = 10;
+      let limit = RECENT_INITIAL_LIMIT;
       let pinnedOnly = false;
       let overview: Overview = { schemaVersion: 1, source: "live", sessions: [], warnings: [] };
       let history: HistorySnapshot | undefined;
@@ -79,7 +81,7 @@ export function registerSessionsCommand(pi: ExtensionAPI, dependencies: Sessions
               : `Recent sessions${pinnedOnly ? " · Pinned" : ""} · ${saved.length} of ${filtered.length}`,
             rows: tab === "Running" ? overview.sessions.map((row) => ({
               id: `live:${row.instanceId}`, project: projectLabel(row, overview), name: row.name ?? `PID ${row.pid}`,
-              meta: `${statusLabel(row)} · ${row.model ?? ""} · PID ${row.pid}${row.pid === self ? " (this session)" : ""}`,
+              meta: `${statusLabel(row)} · ${row.model ?? ""}${row.pid === self ? " (this session)" : ""}`, pid: `PID ${row.pid}`,
             })) : saved.map((row) => ({
               id: `saved:${row.sessionId}`, project: projectLabel(row, recent), name: row.name ?? row.sessionId,
               pinned: isPinned(row.sessionId), savedAt: row.modifiedAt, meta: `saved ${relativeTime(row.modifiedAt, now)}`,
@@ -98,10 +100,10 @@ export function registerSessionsCommand(pi: ExtensionAPI, dependencies: Sessions
           };
           if (refresh) {
             refresh = false;
-            const result = await loadSessionPage(ctx, page, tab === "Recent" ? "Loading saved sessions…" : "Refreshing running sessions…", async (signal) => {
+            const result: LoadResult<{ live: Overview; history?: HistorySnapshot }> = await loadSessionPage(ctx, page, page.tab === "Recent" ? "Loading saved sessions…" : "Refreshing running sessions…", async (signal) => {
               signal.throwIfAborted();
               const live = inventory();
-              if (tab === "Running") return { live };
+              if (page.tab === "Running") return { live };
               const directories = live.sessions.flatMap((row) => row.sessionFile ? [dirname(row.sessionFile)] : []);
               const currentDir = ctx.sessionManager?.getSessionDir();
               if (currentDir) directories.push(currentDir);
@@ -110,7 +112,7 @@ export function registerSessionsCommand(pi: ExtensionAPI, dependencies: Sessions
               if (next.failed) throw Error("History scan failed");
               // Refresh live mapping after asynchronous reads, before committing the snapshot.
               return { live: inventory(), history: next };
-            });
+            }, (id) => { selected[page.tab] = id; });
             if (result.status === "ok") {
               overview = result.value.live;
               if (result.value.history) history = result.value.history;
@@ -118,9 +120,13 @@ export function registerSessionsCommand(pi: ExtensionAPI, dependencies: Sessions
               delete notices.Running;
               delete notices[tab];
             } else {
-              notices[tab] = result.status === "cancelled" ? "Loading cancelled · previous snapshot retained · Refresh to retry"
+              notices[tab] = result.status !== "error" ? "Loading cancelled · previous snapshot retained · Refresh to retry"
                 : "Refresh failed · previous snapshot retained · Refresh to retry";
-              if (updated[tab] === undefined) notices[tab] = result.status === "cancelled" ? "Loading cancelled · Refresh to retry" : "Could not load sessions · Refresh to retry";
+              if (updated[tab] === undefined) notices[tab] = result.status !== "error" ? "Loading cancelled · Refresh to retry" : "Could not load sessions · Refresh to retry";
+              if (result.status === "navigate") {
+                tab = result.tab;
+                refresh = updated[tab] === undefined && !notices[tab];
+              }
             }
             continue;
           }
@@ -136,7 +142,7 @@ export function registerSessionsCommand(pi: ExtensionAPI, dependencies: Sessions
           } else if (choice === "Refresh") refresh = true;
           else if (choice === "Coverage details") await showCoverage(ctx, page.coverage);
           else if (choice === "Pinned only" || choice === "All recent") {
-            pinnedOnly = choice === "Pinned only"; limit = 10; delete selected.Recent;
+            pinnedOnly = choice === "Pinned only"; limit = RECENT_INITIAL_LIMIT; delete selected.Recent;
           } else if (choice === "Show more") {
             const next = filtered[limit]; if (next) selected.Recent = `saved:${next.sessionId}`;
             limit += 10;

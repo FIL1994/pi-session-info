@@ -31,7 +31,7 @@ metadata. Heartbeats are 5 seconds; 20-second and future reports are stale.
 
 `/sessions` is project-first, selectable, read-only, and offers details,
 **Refresh**, and **Close**. Running/Recent tabs separate live inventory from
-saved metadata; Recent starts at 10 and offers Show more. CLI cards and JSON preserve unknowns and provenance.
+saved metadata; Recent starts at 15 and offers Show more. CLI cards and JSON preserve unknowns and provenance.
 JSON includes `generatedAt` and may include activity/report timestamps, mode,
 provider, session file, and process identity.
 

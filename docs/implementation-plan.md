@@ -6,6 +6,10 @@ The dashboard-polish slice adds responsive columns, fixed TUI headers/actions,
 scrollable coverage notes, per-tab identity-based selection, and timestamped
 snapshots. Cancellable history reads keep previous rows visible while loading;
 failed/cancelled loads cannot replace the snapshot with partial/late results.
+Loading screens keep row navigation and tab switching active; switching tabs
+aborts the load and restores the destination snapshot immediately. History parsing
+and buffered directory walks yield periodically to keyboard/timer events. Cancelled
+loads retain the previous snapshot and require Refresh to retry.
 Only display ages repaint periodically; inventory remains manually refreshed.
 Synchronous Linux process scans are not interruptible mid-scan. This does not
 claim watch-mode or all M5 gates. Native `/resume` features remain native.
@@ -18,7 +22,7 @@ or its newest-first order. The observer remains read-only toward Pi sessions:
 native `/resume` owns search, project scope and session switching. Pin storage
 is the sole new user-initiated persistent mutation, not session control.
 
-The Recent-history slice now adds Running/Recent tabs to `/sessions`, with 10
+The Recent-history slice now adds Running/Recent tabs to `/sessions`, with 15
 saved sessions initially and Show more in batches of 10. History is metadata-only,
 ordered by file modification time, lazily loaded and cached for the dialog until
 Refresh. Exact live session IDs/files and the viewer's current session are excluded

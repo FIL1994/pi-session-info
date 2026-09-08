@@ -52,6 +52,54 @@ test("narrow rows prioritize names and neutralize terminal bytes", () => {
   }
 });
 
+test("PID survives long model names and session columns do not stretch with the terminal", async () => {
+  const p = page();
+  p.rows = [
+    { id: "one", project: "会話", name: "Short", meta: "Working · " + "long-model-".repeat(20), pid: "PID 4194304", pinned: true },
+    { id: "two", project: "project", name: "Session two", meta: "Idle · model", pid: "PID 42" },
+  ];
+  await selectSessionPage(host((component) => {
+    for (const width of [46, 60, 79, 80, 100, 160, 240]) {
+      const lines = component.render(width);
+      for (const line of lines) expect(visibleWidth(line)).toBeLessThanOrEqual(width);
+      const first = lines.find((line) => line.includes("Short"))!;
+      const second = lines.find((line) => line.includes("Session two"))!;
+      expect(first).toContain("PID 4194304");
+      expect(second).toContain("PID 42");
+      const position = (line: string, text: string) => visibleWidth(line.slice(0, line.indexOf(text)));
+      expect(position(first, "PID")).toBe(position(second, "PID"));
+      if (width >= 80) {
+        const header = lines.find((line) => line.includes("Status · Model"))!;
+        expect(position(first, "Working")).toBe(position(header, "Status"));
+        expect(position(first, "PID")).toBe(position(header, "PID"));
+        expect(position(first, "Working") - position(first, "Short") - "Short".length).toBe(8);
+      }
+    }
+    component.handleInput?.("\u001b");
+  }), p, () => {});
+});
+
+test("Recent columns stay content-sized and never show a PID column", async () => {
+  const p = { ...page(), tab: "Recent" as const, rows: [
+    { id: "saved", project: "project", name: "Saved session", meta: "saved just now", savedAt: new Date(1000).toISOString() },
+  ] };
+  await selectSessionPage(host((component) => {
+    const lines = component.render(240);
+    expect(lines.join("\n")).not.toContain("PID");
+    expect(lines.find((line) => line.includes("Saved session"))).toContain("Saved session  saved just now");
+    component.handleInput?.("\u001b");
+  }), p, () => {});
+});
+
+test("RPC labels retain the separate PID", async () => {
+  const p = page(); p.rows = [{ id: "one", project: "project", name: "Session", meta: "Idle", pid: "PID 1234567" }];
+  const ctx = { mode: "rpc", ui: { select: async (_title: string, labels: string[]) => {
+    expect(labels[0]).toContain("Idle · PID 1234567");
+    return labels[0];
+  } } } as unknown as ExtensionCommandContext;
+  expect(await selectSessionPage(ctx, p, () => {})).toBe("one");
+});
+
 test("TUI tabs, escape, and action shortcuts return stable values", async () => {
   for (const [key, expected] of [["\t", "Recent"], ["r", "Refresh"], ["c", "Coverage details"], ["\u001b", undefined]] as const) {
     expect(await selectSessionPage(host((c) => c.handleInput?.(key)), page(), () => {})).toBe(expected);
@@ -92,6 +140,39 @@ test("load success and failure settle without leaking rejected work", async () =
   const ctx = host(() => {});
   expect(await loadSessionPage(ctx, page(), "Loading", async () => 42)).toEqual({ status: "ok", value: 42 });
   expect(await loadSessionPage(ctx, page(), "Loading", async () => { throw Error("secret"); })).toEqual({ status: "error" });
+});
+
+test("loading accepts row navigation and tab switching without waiting for the reader", async () => {
+  for (const key of ["\t", "\u001b[Z", "\u001b[D", "\u001b[C"]) {
+    let signal!: AbortSignal;
+    let complete!: (value: number) => void;
+    let started!: () => void;
+    const ready = new Promise<void>((resolve) => { started = resolve; });
+    let focused = "";
+    const p = { ...page(), tab: "Recent" as const };
+    const result = await loadSessionPage(host(async (component) => {
+      await ready;
+      component.handleInput?.("\u001b[B");
+      expect(focused).toBe("id-1");
+      expect(component.render(100).find((line) => line.startsWith("→"))).toContain("Session 1");
+      component.handleInput?.(key);
+    }), p, "Loading saved sessions…", (s) => {
+      signal = s; started();
+      return new Promise<number>((resolve) => { complete = resolve; });
+    }, (id) => { focused = id; });
+    expect(result).toEqual({ status: "navigate", tab: "Running" });
+    expect(signal.aborted).toBe(true);
+    complete(42); // A late, non-cooperative reader cannot publish its result.
+    await Promise.resolve();
+  }
+});
+
+test("switching tabs before the first load starts never invokes the reader", async () => {
+  let called = false;
+  const result = await loadSessionPage(host((component) => component.handleInput?.("\t")),
+    page(), "Loading", async () => { called = true; });
+  expect(result).toEqual({ status: "navigate", tab: "Recent" });
+  expect(called).toBe(false);
 });
 
 test("RPC cancellation aborts work and retains a metadata snapshot in the loading dialog", async () => {

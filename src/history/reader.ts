@@ -2,6 +2,7 @@ import { constants } from "node:fs";
 import { lstat, open, opendir, realpath } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
+import { setImmediate as yieldToEventLoop } from "node:timers/promises";
 
 export interface SavedSession {
   sessionId: string;
@@ -28,7 +29,7 @@ function expand(path: string): string {
 }
 
 /** Read-only v3 metadata. Bounded head/tail windows never retain transcript content. */
-export async function readHistory(options: { directories?: string[]; agentDir?: string; signal?: AbortSignal } = {}): Promise<HistorySnapshot> {
+export async function readHistory(options: { directories?: string[]; agentDir?: string; signal?: AbortSignal; yieldToUI?: () => Promise<void> } = {}): Promise<HistorySnapshot> {
   const check = () => options.signal?.throwIfAborted();
   check();
   const counts = new Map<string, number>();
@@ -39,6 +40,11 @@ export async function readHistory(options: { directories?: string[]; agentDir?: 
   let entries = 0;
   let files = 0;
   let limited = false;
+  const yieldToUI = async () => {
+    check();
+    await (options.yieldToUI ?? yieldToEventLoop)();
+    check();
+  };
 
   async function inspect(path: string): Promise<void> {
     check();
@@ -81,7 +87,11 @@ export async function readHistory(options: { directories?: string[]; agentDir?: 
         if (start && !offset) offset = tail.length;
         let name: string | null = null;
         let malformed = false;
+        let records = 0;
         while (offset < tail.length) {
+          // Cached reads can leave a whole window of parsing on the UI thread.
+          // Yield to keyboard/timer events, not just the microtask queue.
+          if (++records % 128 === 0) await yieldToUI();
           const newline = tail.indexOf(10, offset);
           if (newline < 0) { note("files with incomplete final records (record skipped)"); break; }
           const line = tail.subarray(offset, newline).toString("utf8");
@@ -123,6 +133,7 @@ export async function readHistory(options: { directories?: string[]; agentDir?: 
         if (limited) break;
         if (entries >= MAX_ENTRIES) { limited = true; break; }
         entries++;
+        if (entries % 64 === 0) await yieldToUI();
         const path = join(root, entry.name);
         if (entry.isDirectory() && descend) await scan(path, false);
         else if (entry.name.endsWith(".jsonl")) await inspect(path);

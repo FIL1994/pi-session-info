@@ -15,6 +15,17 @@ const info = (name: string) => JSON.stringify({ type: "session_info", name }) + 
 const read = (root: string) => readHistory({ agentDir: root, directories: [root] });
 
 describe("readHistory", () => {
+  test("large metadata windows yield to UI and honor cancellation during parsing", async () => {
+    const root = await fixture();
+    await writeFile(join(root, "session.jsonl"), header() + info("Saved").repeat(1000));
+    const controller = new AbortController();
+    let yields = 0;
+    await expect(readHistory({ agentDir: root, directories: [root], signal: controller.signal,
+      yieldToUI: async () => { yields++; controller.abort(); },
+    })).rejects.toThrow();
+    expect(yields).toBe(1);
+    expect((await read(root)).sessions[0]?.name).toBe("Saved");
+  });
   test("pre-aborted and in-flight scans reject rather than publishing partial snapshots", async () => {
     const root = await fixture();
     await writeFile(join(root, "session.jsonl"), header());
