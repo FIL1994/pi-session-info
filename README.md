@@ -132,6 +132,15 @@ bun run start --help
 bun run check
 ```
 
+`bun install` installs the local Lefthook Git hooks. The `commit-msg` hook uses
+commitlint to require Conventional Commits, including for merge and revert messages.
+Use `type(scope): description` (scope optional), for example
+`feat(sessions): add filtering` or `fix: preserve unknown status`. Allowed types:
+`build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style`,
+and `test`. Breaking changes can use `!`, such as `feat!: change output format`.
+To reinstall hooks manually, run `bun run lefthook install`.
+Local hooks can be bypassed with `--no-verify`; they do not enforce remote policy.
+
 Without `--demo`, the CLI combines Linux `/proc` with the private status registry.
 Demo paths, IDs, models, and PIDs are fictional.
 
