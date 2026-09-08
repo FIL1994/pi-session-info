@@ -118,6 +118,22 @@ This avoids maintaining a TypeScript extension alongside a second-language CLI.
 Rust or Go would offer convenient native distribution, but that tradeoff is not
 worth the extra protocol/toolchain work for this small local application yet.
 
+## Releases
+
+Release Please runs on pushes to `main` (or manually in GitHub Actions). It opens
+or updates a release PR with the root `package.json` version and `CHANGELOG.md`.
+Merge that PR to create a `vX.Y.Z` tag and GitHub release. The website is not
+versioned separately, and nothing is published to npm; the package remains private.
+
+Conventional `feat` and `fix` commits drive releases. While below 1.0, breaking
+changes bump the minor version, features bump the minor, and fixes bump the patch.
+Chore-only changes do not trigger a release.
+
+The workflow uses `GITHUB_TOKEN` and requires Settings → Actions → General →
+“Allow GitHub Actions to create and approve pull requests”. PRs and tags created
+with this token do not trigger other workflows. If release PR CI or tag-triggered
+publishing is added later, use a GitHub App token or a scoped PAT instead.
+
 ## Development
 
 Requires Bun 1.3 or newer.
