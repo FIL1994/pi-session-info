@@ -57,9 +57,14 @@ session was found.
 - **r**: refresh; **m**: show 10 more; **p**: toggle pinned-only Recent.
 - **c**: discovery details; **Escape**: close, or cancel an active load.
 
-Loading paints immediately and keeps the previous rows visible. Cancellation or
-failed refresh leaves the prior snapshot and its timestamp intact, with a retry
-notice. Selection follows session identity through reordering, details, and tab
+Loading paints immediately with an animated activity indicator, elapsed time,
+and the current step. Recent reports real files checked, saved sessions found,
+and folders visited; these counts are before running-session exclusions, not a
+completion percentage. The total scan size is not known in advance. First loads
+explain why scanning is needed; refreshes label the retained rows as previous
+results. RPC clients get a static loading explanation and cancellation, not live
+progress. Cancellation or failed refresh leaves the prior snapshot and timestamp
+intact; press **r** to retry. Selection follows session identity through reordering, details, and tab
 switches; Show more selects the first newly revealed session. Pin changes get a
 brief confirmation. Display ages repaint every 15 seconds, but data is scanned
 only on initial load / Refresh—not a watch loop. Linux process discovery itself

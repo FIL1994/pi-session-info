@@ -2,6 +2,7 @@ import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { matchesKey, SelectList, Text, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { relativeTime, terminalText } from "../format";
 import { discoveryText } from "./discovery";
+import { loadingLines, type LoadingState, type LoadProgress } from "./loading";
 
 export type SessionsTab = "Running" | "Recent";
 export interface PageRow { id: string; project: string; name: string; meta: string; pid?: string; pinned?: boolean; savedAt?: string }
@@ -57,7 +58,7 @@ type Factory = Parameters<ExtensionCommandContext["ui"]["custom"]>[0];
 type Host = Parameters<Factory>;
 
 function pageComponent(page: SessionPage, tui: Host[0], theme: Host[1], kb: Host[2], done: (choice: string | undefined) => void,
-  onFocus: (id: string) => void, loading?: string) {
+  onFocus: (id: string) => void, loading?: LoadingState) {
   let selected = selectionIndex(page.rows, page.selectedId);
   const focus = () => { const row = page.rows[selected]; if (row) onFocus(row.id); };
   let pageSize = 10;
@@ -75,21 +76,36 @@ function pageComponent(page: SessionPage, tui: Host[0], theme: Host[1], kb: Host
       const rowWidth = Math.max(0, width - 4); // SelectList prefix and safety margin.
       const columns = columnWidths([columnHeader, ...rows], rowWidth);
       const stamp = page.updatedAt === undefined ? "Not loaded" : `Updated ${relativeTime(new Date(page.updatedAt).toISOString(), now)} · snapshot`;
-      const status = loading ?? page.notice;
-      const actionHints = loading ? "Tab / ← → switch tabs · ↑↓ navigate · Esc cancel loading" : page.actions.map((action) => ({
+      const status = page.notice;
+      const actionHints = loading ? `Esc cancel · Tab / ← → cancel & switch${page.rows.length ? " · ↑↓ previous rows" : ""}` : page.actions.map((action) => ({
         "Show more": "m More", "Pinned only": "p Pinned only", "All recent": "p All recent", "Refresh": "r Refresh", "Discovery details": "c Discovery details", "Close": "Esc Close",
       })[action] ?? action).join(" · ");
-      const header = [tabs, terminalText(page.summary), terminalText(height < 8 ? status ?? stamp : stamp)];
-      if (status && height >= 8) header.push(terminalText(status));
-      if (page.warnings.length && height >= 12) header.push(theme.fg("warning", `${page.warnings.length} scan warning${page.warnings.length === 1 ? "" : "s"}${loading ? "" : " · c details"}`));
-      const compactHints = loading ? "Tab switch · Esc cancel" : `${page.actions.includes("Show more") ? "m " : ""}${page.tab === "Recent" ? "p " : ""}r c Esc`;
+      const progress = loading ? loadingLines(loading, now) : [];
+      const header = loading ? [tabs, ...progress.slice(0, height >= 10 ? 3 : 2).map(terminalText)]
+        : [tabs, terminalText(page.summary), terminalText(height < 8 ? status ?? stamp : stamp)];
+      if (loading && height >= 10) header.push(terminalText(page.updatedAt === undefined
+        ? "First load · results appear when the scan finishes"
+        : `Previous results · ${stamp}`));
+      if (!loading && status && height >= 8) header.push(terminalText(status));
+      if (!loading && page.warnings.length && height >= 12) header.push(theme.fg("warning", `${page.warnings.length} scan warning${page.warnings.length === 1 ? "" : "s"} · c details`));
+      const compactHints = loading ? "Esc cancel · Tab switch" : `${page.actions.includes("Show more") ? "m " : ""}${page.tab === "Recent" ? "p " : ""}r c Esc`;
       const footer = new Text(height < 10 ? compactHints : actionHints, 0, 0).render(width).slice(0, Math.max(1, height - header.length - 2)).map((line) => theme.fg("muted", line));
       if (height >= 10 && !loading) footer.push(theme.fg("dim", "Tab / ← → tabs · ↑↓ navigate · Enter details"));
-      if (rowWidth >= 76 && height >= 14) header.push(theme.fg("dim", "  " + rowColumns(columnHeader, rowWidth, columns)));
+      if (rowWidth >= 76 && height >= 14 && (!loading || page.rows.length)) header.push(theme.fg("dim", "  " + rowColumns(columnHeader, rowWidth, columns)));
       const capacity = Math.max(1, height - header.length - footer.length);
       pageSize = Math.max(1, capacity - 1); // SelectList may add one scroll-information line.
       let body: string[];
-      if (!page.rows.length) body = [terminalText(loading ?? page.empty)];
+      if (!page.rows.length) {
+        const explanation = loading ? [
+          ...(height < 10 ? [progress[2]!] : []),
+          ...(page.updatedAt !== undefined ? ["Your previous snapshot is empty; it is kept until this refresh succeeds."] : []),
+          page.tab === "Recent" ? "Scanning saved files to find the newest 15. The number of files is not known in advance."
+            : "Looking for Pi processes and their reported activity.",
+          "Only a completed scan replaces the list. Cancelling does not change session files.",
+          ...((now - loading.startedAt) >= 10_000 ? ["Still working. Large histories or slow disks can take longer. You can cancel and retry with r."] : []),
+        ].join("\n\n") : terminalText(page.empty);
+        body = new Text(explanation, 0, 0).render(width).slice(0, capacity);
+      }
       else {
         const list = new SelectList(rows.map((row) => ({ value: row.id, label: rowColumns(row, rowWidth, columns) })), pageSize, {
           selectedPrefix: (s) => theme.fg("accent", s), selectedText: (s) => theme.fg("accent", s),
@@ -146,39 +162,53 @@ export async function selectSessionPage(ctx: ExtensionCommandContext, page: Sess
 export type LoadResult<T> = { status: "ok"; value: T } | { status: "cancelled" } | { status: "error" } | { status: "navigate"; tab: SessionsTab };
 
 /** Keep the prior page visible. Cancellation invalidates late results and closes I/O cooperatively. */
-export async function loadSessionPage<T>(ctx: ExtensionCommandContext, page: SessionPage, label: string, work: (signal: AbortSignal) => Promise<T>, onFocus: (id: string) => void = () => {}): Promise<LoadResult<T>> {
+export async function loadSessionPage<T>(ctx: ExtensionCommandContext, page: SessionPage, label: string, work: (signal: AbortSignal, report: (progress: LoadProgress) => void) => Promise<T>, onFocus: (id: string) => void = () => {}): Promise<LoadResult<T>> {
   const controller = new AbortController();
+  const clock = page.clock ?? (() => Date.now());
+  const loading: LoadingState = { label, startedAt: clock(), progress: { phase: "checking-running" } };
+  let ended = false;
+  const report = (progress: LoadProgress) => {
+    if (ended || controller.signal.aborted) return;
+    loading.progress = { ...progress };
+    if ("files" in progress) loading.counts = { ...progress };
+  };
   const run = async (): Promise<LoadResult<T>> => {
-    try { const value = await work(controller.signal); return controller.signal.aborted ? { status: "cancelled" } : { status: "ok", value }; }
+    try { controller.signal.throwIfAborted(); const value = await work(controller.signal, report); return controller.signal.aborted ? { status: "cancelled" } : { status: "ok", value }; }
     catch { return controller.signal.aborted ? { status: "cancelled" } : { status: "error" }; }
   };
   if (ctx.mode === "tui") {
     let timer: ReturnType<typeof setTimeout> | undefined;
-    let ended = false;
+    let tick: ReturnType<typeof setInterval> | undefined;
     try {
       return await ctx.ui.custom<LoadResult<T>>((tui, theme, kb, done) => {
         const finish = (result: LoadResult<T>) => { if (!ended) { ended = true; done(result); } };
-        const component = pageComponent(page, tui, theme, kb, (choice) => {
+        const component = pageComponent({ ...page, clock }, tui, theme, kb, (choice) => {
           controller.abort();
           finish(choice === "Running" || choice === "Recent" ? { status: "navigate", tab: choice } : { status: "cancelled" });
-        }, onFocus, label);
+        }, onFocus, loading);
         return { ...component, render(width) {
           const lines = component.render(width);
           // Start only after the first frame has been produced, never in the UI factory.
-          if (!timer && !ended) timer = setTimeout(() => { void run().then(finish); }, 0);
+          if (!timer && !ended) {
+            // One repaint timer coalesces progress bursts and animates slow I/O.
+            tick = setInterval(() => { if (!ended) tui.requestRender(); }, 100); tick.unref();
+            timer = setTimeout(() => { void run().then(finish); }, 0);
+          }
           return lines;
         } };
       }) ?? { status: "cancelled" };
-    } finally { ended = true; if (timer) clearTimeout(timer); controller.abort(); }
+    } finally { ended = true; if (timer) clearTimeout(timer); if (tick) clearInterval(tick); controller.abort(); }
   }
   if (ctx.mode === "rpc") {
-    const title = [label, page.summary, ...page.rows.map((row) => `${row.project} · ${row.name} · ${rowMetadata(row)}`)].map(terminalText).join("\n");
+    const title = [label, "Scanning metadata; results appear when the scan completes. This dialog does not show live progress.",
+      ...(page.updatedAt === undefined ? [] : [`Previous results · ${page.summary}`]),
+      ...page.rows.map((row) => `${row.project} · ${row.name} · ${rowMetadata(row)}`)].map(terminalText).join("\n");
     const prompt = ctx.ui.select(title, ["Cancel loading"], { signal: controller.signal });
     try { return await Promise.race([run(), prompt.then((): LoadResult<T> => ({ status: "cancelled" }))]); }
-    finally { controller.abort(); }
+    finally { ended = true; controller.abort(); }
   }
   // Injected/headless hosts without a terminal mode still use the same data path.
-  return run();
+  try { return await run(); } finally { ended = true; controller.abort(); }
 }
 
 export async function showDiscoveryDetails(ctx: ExtensionCommandContext, page: SessionPage): Promise<void> {

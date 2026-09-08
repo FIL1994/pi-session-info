@@ -3,6 +3,7 @@ import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-c
 import { matchesKey, type Component, type KeyId } from "@earendil-works/pi-tui";
 import { registerSessionsCommand, type SessionsDeps } from "../src/extension/index";
 import { demoOverview } from "../src/demo";
+import type { HistoryProgress } from "../src/history/reader";
 
 async function dashboard(deps: SessionsDeps, keys: string[][], onLoading?: (component: Component, output: string) => void) {
   let handler!: (args: string, ctx: ExtensionCommandContext) => Promise<void>;
@@ -17,7 +18,7 @@ async function dashboard(deps: SessionsDeps, keys: string[][], onLoading?: (comp
         const component = factory({ terminal: { rows: 24 }, requestRender() {} }, { fg: (_: string, s: string) => s },
           { matches: (data: string, action: string) => actions[action] ? matchesKey(data, actions[action]) : false }, resolve);
         const output = component.render(120).join("\n");
-        if (output.includes("Refreshing running sessions") || output.includes("Loading saved sessions")) { loading.push(output); onLoading?.(component, output); return; }
+        if (output.includes("Refreshing running sessions") || output.includes("Loading saved sessions") || output.includes("Refreshing saved sessions")) { loading.push(output); onLoading?.(component, output); return; }
         pages.push(output);
         for (const key of keys.shift() ?? ["\u001b"]) component.handleInput?.(key);
       } catch (error) { reject(error); }
@@ -83,4 +84,32 @@ test("Show more focuses the first new identity and a failed history refresh reta
   expect(result.pages[3]).toContain("Refresh failed");
   expect(result.pages[3]).toContain("21 of 21");
   expect(result.loading.at(-1)).toContain("Task-15");
+});
+
+test("Recent retry starts a fresh scan and ignores a cancelled reader's late progress and results", async () => {
+  let reads = 0;
+  let component!: Component;
+  let finishOld!: (value: { sessions: []; warnings: string[] }) => void;
+  let reportOld: ((progress: HistoryProgress) => void) | undefined;
+  const result = await dashboard({ overview: demoOverview, history: async (options) => {
+    if (++reads === 1) {
+      reportOld = options?.onProgress;
+      return new Promise((resolve) => { finishOld = resolve; component.handleInput?.("\u001b"); });
+    }
+    options?.onProgress?.({ phase: "scanning", files: 3, sessions: 1, directories: 2 });
+    expect(component.render(120).join("\n")).toContain("3 files checked");
+    reportOld?.({ phase: "scanning", files: 999, sessions: 999, directories: 999 });
+    finishOld({ sessions: [], warnings: ["late warning"] });
+    expect(component.render(120).join("\n")).not.toContain("999");
+    return { sessions: [{ sessionId: "fresh", sessionFile: "/fixture/fresh", cwd: "/fixture", name: "Fresh result", modifiedAt: new Date(1000).toISOString() }], warnings: [] };
+  } }, [["\t"], ["r"], ["\u001b"]], (c, output) => {
+    if (output.includes("Loading saved sessions")) component = c;
+  });
+  expect(reads).toBe(2);
+  expect(result.pages[1]).toContain("Loading cancelled");
+  expect(result.pages[1]).toContain("r Refresh to retry");
+  expect(result.pages[1]).not.toContain("0 of 0");
+  expect(result.pages[2]).toContain("Fresh result");
+  expect(result.pages[2]).not.toContain("Loading cancelled");
+  expect(result.pages.join("\n")).not.toContain("late warning");
 });

@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, symlink, utimes, writeFile } from "node:fs/promises
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readHistory } from "../src/history/reader";
+import { readHistory, type HistoryProgress } from "../src/history/reader";
 
 const roots: string[] = [];
 async function fixture() {
@@ -15,6 +15,28 @@ const info = (name: string) => JSON.stringify({ type: "session_info", name }) + 
 const read = (root: string) => readHistory({ agentDir: root, directories: [root] });
 
 describe("readHistory", () => {
+  test("reports actual bounded metadata progress without paths or contents", async () => {
+    const root = await fixture();
+    await writeFile(join(root, "one.jsonl"), header("one") + info("PRIVATE NAME"));
+    await writeFile(join(root, "two.jsonl"), header("two"));
+    await writeFile(join(root, "bad.jsonl"), "PRIVATE CONTENT\n");
+    const updates: HistoryProgress[] = [];
+    const result = await readHistory({ agentDir: root, directories: [root], onProgress: (progress) => updates.push(progress) });
+    expect(updates[0]).toEqual({ phase: "scanning", directories: 0, files: 0, sessions: 0 });
+    expect(updates.at(-1)).toEqual({ phase: "sorting", directories: 2, files: 3, sessions: 2 });
+    expect(result.sessions).toHaveLength(2);
+    expect(JSON.stringify(updates)).not.toContain(root);
+    expect(JSON.stringify(updates)).not.toContain("PRIVATE");
+    expect(updates.every((p, i) => i === 0 || p.files >= updates[i - 1]!.files)).toBe(true);
+    const cancelled = new AbortController();
+    const stopped: HistoryProgress[] = [];
+    await expect(readHistory({ agentDir: root, directories: [root], signal: cancelled.signal, onProgress: (progress) => {
+      stopped.push(progress);
+      if (progress.files === 1) cancelled.abort();
+    } })).rejects.toThrow();
+    expect(stopped.at(-1)?.files).toBe(1);
+    expect(stopped.some((p) => p.phase === "sorting")).toBe(false);
+  });
   test("large metadata windows yield to UI and honor cancellation during parsing", async () => {
     const root = await fixture();
     await writeFile(join(root, "session.jsonl"), header() + info("Saved").repeat(1000));

@@ -10,6 +10,12 @@ Loading screens keep row navigation and tab switching active; switching tabs
 aborts the load and restores the destination snapshot immediately. History parsing
 and buffered directory walks yield periodically to keyboard/timer events. Cancelled
 loads retain the previous snapshot and require Refresh to retry.
+Recent loading now has a stable, animated progress panel with elapsed time and
+explicit phases. Metadata-only file/session/folder counts describe work performed,
+not a percentage or the final count after live exclusions. First loads never show
+an empty-result count; refreshes label previous results. Progress bursts are
+coalesced into 100ms repaints, with timers and late callbacks disabled on exit.
+RPC retains a static loading explanation and cancellation (no live progress).
 Only display ages repaint periodically; inventory remains manually refreshed.
 Synchronous Linux process scans are not interruptible mid-scan. This does not
 claim watch-mode or all M5 gates. Native `/resume` features remain native.

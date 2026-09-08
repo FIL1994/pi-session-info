@@ -12,6 +12,8 @@ export interface SavedSession {
   modifiedAt: string;
 }
 export interface HistorySnapshot { sessions: SavedSession[]; warnings: string[]; failed?: boolean }
+/** Counts only: never publish paths or transcript contents as progress. */
+export interface HistoryProgress { phase: "scanning" | "sorting"; directories: number; files: number; sessions: number }
 
 const MAX_ENTRIES = 10_000;
 const MAX_FILES = 2_000;
@@ -29,7 +31,7 @@ function expand(path: string): string {
 }
 
 /** Read-only v3 metadata. Bounded head/tail windows never retain transcript content. */
-export async function readHistory(options: { directories?: string[]; agentDir?: string; signal?: AbortSignal; yieldToUI?: () => Promise<void> } = {}): Promise<HistorySnapshot> {
+export async function readHistory(options: { directories?: string[]; agentDir?: string; signal?: AbortSignal; yieldToUI?: () => Promise<void>; onProgress?: (progress: HistoryProgress) => void } = {}): Promise<HistorySnapshot> {
   const check = () => options.signal?.throwIfAborted();
   check();
   const counts = new Map<string, number>();
@@ -40,6 +42,11 @@ export async function readHistory(options: { directories?: string[]; agentDir?: 
   let entries = 0;
   let files = 0;
   let limited = false;
+  const report = (phase: HistoryProgress["phase"] = "scanning") => {
+    check();
+    options.onProgress?.({ phase, directories: seenDirs.size, files, sessions: sessions.size });
+    check();
+  };
   const yieldToUI = async () => {
     check();
     await (options.yieldToUI ?? yieldToEventLoop)();
@@ -121,6 +128,7 @@ export async function readHistory(options: { directories?: string[]; agentDir?: 
     check();
     if (limited || seenDirs.has(root)) return;
     seenDirs.add(root);
+    report();
     try {
       // Reject symlink directory paths, including symlink ancestors. Do not follow
       // aliases into unrelated trees; repeated normalized directories are deduped.
@@ -136,7 +144,7 @@ export async function readHistory(options: { directories?: string[]; agentDir?: 
         if (entries % 64 === 0) await yieldToUI();
         const path = join(root, entry.name);
         if (entry.isDirectory() && descend) await scan(path, false);
-        else if (entry.name.endsWith(".jsonl")) await inspect(path);
+        else if (entry.name.endsWith(".jsonl")) { await inspect(path); report(); }
       }
     } catch (error) {
       check();
@@ -147,13 +155,14 @@ export async function readHistory(options: { directories?: string[]; agentDir?: 
   // An injected agentDir isolates fixtures from the developer's session env.
   const agentDir = options.agentDir ?? process.env.PI_CODING_AGENT_DIR ?? join(homedir(), ".pi", "agent");
   const root = options.agentDir ? join(agentDir, "sessions") : process.env.PI_CODING_AGENT_SESSION_DIR || join(agentDir, "sessions");
+  report();
   for (const directory of [root, ...(options.directories ?? [])]) {
     if (limited) break;
     if (directory.trim()) await scan(expand(directory), true);
   }
   const warnings = [...counts].map(([reason, count]) => `History: ${count} ${reason}.`);
   if (limited) warnings.push(`History scan limit reached (${MAX_ENTRIES} entries / ${MAX_FILES} files); newest-session coverage may be incomplete.`);
-  check();
+  report("sorting");
   return {
     sessions: [...sessions.values()].sort((a, b) => Date.parse(b.modifiedAt) - Date.parse(a.modifiedAt) || a.sessionFile.localeCompare(b.sessionFile)),
     warnings,

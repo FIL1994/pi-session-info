@@ -18,6 +18,14 @@ file modification time; no prompt or tool output excerpts are displayed.
 History is cached until Refresh or closing the command. The list is a snapshot, not a watch view,
 and does not control sessions or add output to model context.
 
+While Recent loads, the TUI shows an activity indicator, elapsed time, current
+step, and real counts of files checked, sessions found, and folders visited.
+The total is unknown during scanning; these are not completion percentages and
+sessions found may include running sessions that will be excluded from the list.
+Refresh keeps previous results visible and labelled. **Escape** cancels;
+**Tab / ← / →** cancels and switches tabs. Press **r** to retry after cancellation
+or failure. RPC clients get a static loading explanation, not live counters.
+
 Rows show relative saved ages; details retain exact dates. Use **Pin session** or
 **Unpin session** in details to save favorites. **Pinned only** in Recent filters
 before the 15-row limit, remains newest-first, and still excludes running sessions.

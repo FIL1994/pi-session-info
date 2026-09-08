@@ -2,14 +2,15 @@ import { expect, test } from "bun:test";
 import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { matchesKey, visibleWidth, type Component } from "@earendil-works/pi-tui";
 import { loadSessionPage, rowColumns, selectSessionPage, selectionIndex, showDiscoveryDetails, type SessionPage } from "../src/extension/picker";
+import type { LoadProgress } from "../src/extension/loading";
 
 const page = (): SessionPage => ({ tab: "Running", now: 1000, updatedAt: 1000, summary: "20 running · 18 connected", empty: "No sessions",
   warnings: ["Long warning ".repeat(80)], actions: ["Refresh", "Discovery details", "Close"],
   rows: Array.from({ length: 20 }, (_, i) => ({ id: `id-${i}`, project: "project", name: `Session ${i}`, meta: "Working · model" })) });
 
-function host(script: (component: Component) => void | Promise<void>, height = 24) {
+function host(script: (component: Component) => void | Promise<void>, height = 24, requestRender = () => {}) {
   return { mode: "tui", ui: { custom: (factory: (...args: any[]) => Component) => new Promise((resolve, reject) => {
-    const component = factory({ terminal: { rows: height }, requestRender() {} }, { fg: (_color: string, s: string) => s }, {
+    const component = factory({ terminal: { rows: height }, requestRender }, { fg: (_color: string, s: string) => s }, {
       matches: (data: string, action: string) => {
         const keys: Record<string, string> = { "tui.select.cancel": "escape", "tui.select.confirm": "enter", "tui.select.up": "up", "tui.select.down": "down", "tui.select.pageUp": "pageUp", "tui.select.pageDown": "pageDown" };
         return action in keys && matchesKey(data, keys[action] as "escape");
@@ -173,6 +174,81 @@ test("switching tabs before the first load starts never invokes the reader", asy
     page(), "Loading", async () => { called = true; });
   expect(result).toEqual({ status: "navigate", tab: "Recent" });
   expect(called).toBe(false);
+});
+
+test("Recent first load shows real progress, elapsed time, and no misleading empty results", async () => {
+  let now = 1000;
+  let started!: () => void;
+  const ready = new Promise<void>((resolve) => { started = resolve; });
+  let report!: (progress: LoadProgress) => void;
+  const { updatedAt, ...initial } = page();
+  await loadSessionPage(host(async (component) => {
+    const first = component.render(120);
+    expect(first.join("\n")).toContain("First load");
+    expect(first.join("\n")).toContain("Scanning saved files to find the newest 15");
+    expect(first.join("\n")).not.toContain("0 of 0");
+    expect(first.join("\n")).not.toContain("No recent saved sessions");
+    expect(first.join("\n")).not.toContain("Not loaded");
+    await ready;
+    report({ phase: "scanning", files: 86, sessions: 72, directories: 4 });
+    now += 12_300;
+    const scanning = component.render(120);
+    expect(scanning).toHaveLength(first.length);
+    expect(scanning.join("\n")).toContain("12s elapsed");
+    expect(scanning.join("\n")).toContain("86 files checked · 72 saved sessions found · 4 folders visited");
+    expect(scanning.join("\n")).toContain("Still working");
+    expect(scanning.join("\n")).not.toContain("%");
+    expect(scanning.join("\n")).not.toContain("Enter details");
+    report({ phase: "checking-matches" });
+    expect(component.render(120).join("\n")).toContain("86 files checked");
+    component.handleInput?.("\u001b");
+  }), { ...initial, tab: "Recent", rows: [], summary: "Recent sessions · 0 of 0", clock: () => now }, "Loading saved sessions…", (_signal, update) => {
+    report = update; started(); return new Promise(() => {});
+  });
+});
+
+test("loading layout stays bounded on small terminals and labels old snapshots", async () => {
+  for (const height of [7, 8, 10, 12, 24]) {
+    for (const rows of [[], page().rows]) {
+      await loadSessionPage(host((component) => {
+        for (const width of [16, 32, 80, 120]) {
+          const lines = component.render(width);
+          expect(lines.length).toBeLessThanOrEqual(Math.max(5, Math.min(24, height - 2)));
+          for (const line of lines) expect(visibleWidth(line)).toBeLessThanOrEqual(width);
+          expect(lines.join("\n")).toContain("Esc");
+          if (height >= 12 && width === 120) expect(lines.join("\n")).toContain("Previous results · Updated just now");
+        }
+        component.handleInput?.("\u001b");
+      }, height), { ...page(), tab: "Recent", rows, clock: () => 1000 }, "Refreshing saved sessions…", async () => {});
+    }
+  }
+});
+
+test("progress repaints are coalesced and cancellation stops animation and late updates", async () => {
+  let renders = 0;
+  let started!: () => void;
+  const ready = new Promise<void>((resolve) => { started = resolve; });
+  let report!: (progress: LoadProgress) => void;
+  let complete!: () => void;
+  let component!: Component;
+  await loadSessionPage(host(async (c) => {
+    component = c;
+    await ready;
+    for (let i = 0; i < 1000; i++) report({ phase: "scanning", files: i, sessions: i, directories: 1 });
+    expect(renders).toBe(0);
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    expect(renders).toBeGreaterThan(0);
+    component.handleInput?.("\u001b");
+  }, 24, () => { renders++; }), { ...page(), clock: () => 1000 }, "Loading", (_signal, update) => {
+    report = update; started(); return new Promise<void>((resolve) => { complete = resolve; });
+  });
+  const before = component.render(120);
+  const stopped = renders;
+  report({ phase: "scanning", files: 99999, sessions: 99999, directories: 99999 });
+  complete();
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  expect(renders).toBe(stopped);
+  expect(component.render(120)).toEqual(before);
 });
 
 test("RPC cancellation aborts work and retains a metadata snapshot in the loading dialog", async () => {

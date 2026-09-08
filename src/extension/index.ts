@@ -1,5 +1,6 @@
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { dirname } from "node:path";
+import { setImmediate as yieldToEventLoop } from "node:timers/promises";
 import { liveOverview } from "../inventory";
 import type { Overview } from "../core/types";
 import { formatDetails, projectLabel, relativeTime, statusLabel, terminalText } from "../format";
@@ -79,7 +80,7 @@ export function registerSessionsCommand(pi: ExtensionAPI, dependencies: Sessions
           const page: SessionPage = {
             tab, now, clock,
             summary: tab === "Running" ? `${overview.sessions.length} running · ${connected} connected${stale ? ` · ${stale} stale` : ""}`
-              : `Recent sessions${pinnedOnly ? " · Pinned" : ""} · ${saved.length} of ${filtered.length}`,
+              : `Recent sessions${pinnedOnly ? " · Pinned" : ""} · ${history ? `${saved.length} of ${filtered.length}` : "not loaded"}`,
             rows: tab === "Running" ? overview.sessions.map((row) => ({
               id: `live:${row.instanceId}`, project: projectLabel(row, overview), name: row.name ?? `PID ${row.pid}`,
               meta: `${statusLabel(row)} · ${row.model ?? ""}${row.pid === self ? " (this session)" : ""}`, pid: `PID ${row.pid}`,
@@ -98,17 +99,20 @@ export function registerSessionsCommand(pi: ExtensionAPI, dependencies: Sessions
           };
           if (refresh) {
             refresh = false;
-            const result: LoadResult<{ live: Overview; history?: HistorySnapshot }> = await loadSessionPage(ctx, page, page.tab === "Recent" ? "Loading saved sessions…" : "Refreshing running sessions…", async (signal) => {
+            const result: LoadResult<{ live: Overview; history?: HistorySnapshot }> = await loadSessionPage(ctx, page, page.tab === "Recent" ? (history ? "Refreshing saved sessions…" : "Loading saved sessions…") : "Refreshing running sessions…", async (signal, report) => {
               signal.throwIfAborted();
               const live = inventory();
               if (page.tab === "Running") return { live };
               const directories = live.sessions.flatMap((row) => row.sessionFile ? [dirname(row.sessionFile)] : []);
               const currentDir = ctx.sessionManager?.getSessionDir();
               if (currentDir) directories.push(currentDir);
-              const next = await historyReader({ directories, signal });
+              const next = await historyReader({ directories, signal, onProgress: report });
               signal.throwIfAborted();
               if (next.failed) throw Error("History scan failed");
               // Refresh live mapping after asynchronous reads, before committing the snapshot.
+              report({ phase: "checking-matches" });
+              await yieldToEventLoop();
+              signal.throwIfAborted();
               return { live: inventory(), history: next };
             }, (id) => { selected[page.tab] = id; });
             if (result.status === "ok") {
@@ -118,9 +122,9 @@ export function registerSessionsCommand(pi: ExtensionAPI, dependencies: Sessions
               delete notices.Running;
               delete notices[tab];
             } else {
-              notices[tab] = result.status !== "error" ? "Loading cancelled · previous snapshot retained · Refresh to retry"
-                : "Refresh failed · previous snapshot retained · Refresh to retry";
-              if (updated[tab] === undefined) notices[tab] = result.status !== "error" ? "Loading cancelled · Refresh to retry" : "Could not load sessions · Refresh to retry";
+              notices[tab] = result.status !== "error" ? "Loading cancelled · previous snapshot retained · r Refresh to retry"
+                : "Refresh failed · previous snapshot retained · r Refresh to retry";
+              if (updated[tab] === undefined) notices[tab] = result.status !== "error" ? "Loading cancelled · r Refresh to retry" : "Could not load sessions · r Refresh to retry";
               if (result.status === "navigate") {
                 tab = result.tab;
                 refresh = updated[tab] === undefined && !notices[tab];
