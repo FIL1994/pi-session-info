@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test";
 import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { matchesKey, visibleWidth, type Component } from "@earendil-works/pi-tui";
-import { loadSessionPage, rowColumns, selectSessionPage, selectionIndex, showCoverage, type SessionPage } from "../src/extension/picker";
+import { loadSessionPage, rowColumns, selectSessionPage, selectionIndex, showDiscoveryDetails, type SessionPage } from "../src/extension/picker";
 
 const page = (): SessionPage => ({ tab: "Running", now: 1000, updatedAt: 1000, summary: "20 running · 18 connected", empty: "No sessions",
-  coverage: ["Long warning ".repeat(80)], actions: ["Refresh", "Coverage details", "Close"],
+  warnings: ["Long warning ".repeat(80)], actions: ["Refresh", "Discovery details", "Close"],
   rows: Array.from({ length: 20 }, (_, i) => ({ id: `id-${i}`, project: "project", name: `Session ${i}`, meta: "Working · model" })) });
 
 function host(script: (component: Component) => void | Promise<void>, height = 24) {
@@ -101,13 +101,13 @@ test("RPC labels retain the separate PID", async () => {
 });
 
 test("TUI tabs, escape, and action shortcuts return stable values", async () => {
-  for (const [key, expected] of [["\t", "Recent"], ["r", "Refresh"], ["c", "Coverage details"], ["\u001b", undefined]] as const) {
+  for (const [key, expected] of [["\t", "Recent"], ["r", "Refresh"], ["c", "Discovery details"], ["\u001b", undefined]] as const) {
     expect(await selectSessionPage(host((c) => c.handleInput?.(key)), page(), () => {})).toBe(expected);
   }
 });
 
 test("short terminals retain tabs and actions without exceeding available height", async () => {
-  const p = { ...page(), tab: "Recent" as const, actions: ["Show more", "Pinned only", "Refresh", "Coverage details", "Close"] };
+  const p = { ...page(), tab: "Recent" as const, actions: ["Show more", "Pinned only", "Refresh", "Discovery details", "Close"] };
   for (const height of [8, 10, 12, 20]) {
     await selectSessionPage(host((component) => {
       for (const width of [16, 32, 80]) {
@@ -196,7 +196,7 @@ test("display age advances on repaint without discovering or changing snapshots"
   }), p, () => {});
 });
 
-test("coverage is scrollable and bounded on short terminals", async () => {
+test("discovery details are scrollable and bounded on short terminals", async () => {
   const ctx = host((component) => {
     const first = component.render(30);
     expect(first.length).toBeLessThanOrEqual(10);
@@ -204,5 +204,39 @@ test("coverage is scrollable and bounded on short terminals", async () => {
     expect(component.render(30)).not.toEqual(first);
     component.handleInput?.("\u001b");
   }, 12);
-  await showCoverage(ctx, page().coverage);
+  await showDiscoveryDetails(ctx, page());
+});
+
+test("only actual scan warnings get a dashboard indicator", async () => {
+  for (const warnings of [[], ["Unreadable file"], ["Unreadable file", "Scan limit reached"]]) {
+    await selectSessionPage(host((component) => {
+      const output = component.render(120).join("\n");
+      expect(output).toContain("c Discovery details");
+      expect(output).not.toContain("coverage notes");
+      if (warnings.length) expect(output).toContain(`${warnings.length} scan warning${warnings.length === 1 ? "" : "s"} · c details`);
+      else expect(output).not.toContain("scan warning");
+      component.handleInput?.("\u001b");
+    }), { ...page(), warnings }, () => {});
+  }
+});
+
+test("discovery details share tab-specific sections in RPC and keep headings fixed in TUI", async () => {
+  let rpc = "";
+  await showDiscoveryDetails({ mode: "rpc", ui: { select: async (title: string) => { rpc = title; } } } as unknown as ExtensionCommandContext,
+    { ...page(), tab: "Recent", warnings: [] });
+  expect(rpc).toContain("Recent · Discovery details");
+  expect(rpc).toContain("Scan results\nNo scan warnings reported");
+  expect(rpc).toContain("How Recent works");
+  expect(rpc).not.toContain("How Running works");
+  await showDiscoveryDetails(host((component) => {
+    const first = component.render(50);
+    component.handleInput?.("\u001b[6~"); // Page down.
+    const next = component.render(50);
+    expect(next[0]).toBe(first[0]);
+    expect(next).not.toEqual(first);
+    expect(next.at(-1)).toContain("Esc / Enter back");
+    component.handleInput?.("\u001b[5~");
+    expect(component.render(50)).toEqual(first);
+    component.handleInput?.("\r");
+  }, 12), page());
 });

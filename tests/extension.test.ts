@@ -105,7 +105,7 @@ test("pin/unpin changes only extension metadata and Pinned only updates immediat
   expect(app.dialogs[5]?.choices).toContain("Unpin session");
   expect(app.dialogs[6]?.title).toContain("No pinned sessions available");
   expect(ids.size).toBe(0);
-  expect(app.dialogs[1]?.choices).toContain("Coverage details");
+  expect(app.dialogs[1]?.choices).toContain("Discovery details");
   expect(app.notifications).toEqual(["Session pinned.", "Session unpinned."]);
   expect(app.dialogs[2]?.title).toContain(saved[0]!.modifiedAt);
   expect(app.dialogs[1]?.choices[0]).toContain("saved ");
@@ -128,7 +128,7 @@ test("pin read/write failures keep browsing available without leaking errors", a
   const failedRead = setup(["Recent", "first", "Back", "Close"], false, async () => ({ sessions: saved, warnings: [] }),
     { isPinned() { throw Error("secret"); }, setPinned() {} });
   await failedRead.run();
-  expect(failedRead.dialogs[1]?.title).toContain("coverage notes");
+  expect(failedRead.dialogs[1]?.title).toContain("scan warnings");
   expect(failedRead.notifications).toContain("Could not read pin metadata. Check the private pins directory.");
   expect(failedRead.dialogs[2]?.choices).toEqual(["Back"]);
   const failedWrite = setup(["Recent", "first", "Pin session", "Close"], false, async () => ({ sessions: saved, warnings: [] }),

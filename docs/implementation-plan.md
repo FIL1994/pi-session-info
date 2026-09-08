@@ -3,7 +3,7 @@
 ## Incremental implementation update
 
 The dashboard-polish slice adds responsive columns, fixed TUI headers/actions,
-scrollable coverage notes, per-tab identity-based selection, and timestamped
+scrollable discovery details, per-tab identity-based selection, and timestamped
 snapshots. Cancellable history reads keep previous rows visible while loading;
 failed/cancelled loads cannot replace the snapshot with partial/late results.
 Loading screens keep row navigation and tab switching active; switching tabs
@@ -13,6 +13,12 @@ loads retain the previous snapshot and require Refresh to retry.
 Only display ages repaint periodically; inventory remains manually refreshed.
 Synchronous Linux process scans are not interruptible mid-scan. This does not
 claim watch-mode or all M5 gates. Native `/resume` features remain native.
+
+Discovery details separates reported scan issues and next steps from tab-specific
+help. Permanent process-discovery limitations no longer inflate the overview's
+warning count; they remain explicit in help and unchanged in CLI/JSON warnings.
+Unknown warnings are retained. An unloaded snapshot or failed attempt is not
+presented as a successful scan, and no warnings does not imply complete discovery.
 
 Recent now displays relative saved ages (exact timestamps remain in details).
 Session favorites are extension-owned, persistent ID-only pin files under XDG

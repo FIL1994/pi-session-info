@@ -47,13 +47,15 @@ the extension does not duplicate those controls or automatically switch sessions
 
 The TUI keeps tabs, a compact summary, snapshot age, and actions outside the
 scrolling rows. Columns adapt to terminal width, prioritizing session names on
-narrow screens. Long explanations live in the scrollable **Coverage details**
-panel rather than filling the overview.
+narrow screens. **Discovery details** separates scan warnings and next steps
+from tab-specific help. The overview shows a warning count only for reported
+scan issues, not permanent limitations. No warnings does not guarantee every
+session was found.
 
 - **Tab / ← / →**: switch tabs; each tab keeps its selected session.
 - **↑ / ↓**, **Page Up / Down**: navigate; **Enter**: details.
 - **r**: refresh; **m**: show 10 more; **p**: toggle pinned-only Recent.
-- **c**: coverage details; **Escape**: close, or cancel an active load.
+- **c**: discovery details; **Escape**: close, or cancel an active load.
 
 Loading paints immediately and keeps the previous rows visible. Cancellation or
 failed refresh leaves the prior snapshot and its timestamp intact, with a retry

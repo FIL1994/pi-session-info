@@ -1,6 +1,7 @@
 import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { matchesKey, SelectList, Text, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { relativeTime, terminalText } from "../format";
+import { discoveryText } from "./discovery";
 
 export type SessionsTab = "Running" | "Recent";
 export interface PageRow { id: string; project: string; name: string; meta: string; pid?: string; pinned?: boolean; savedAt?: string }
@@ -9,7 +10,7 @@ export interface SessionPage {
   summary: string;
   rows: PageRow[];
   actions: string[];
-  coverage: string[];
+  warnings: string[];
   empty: string;
   updatedAt?: number;
   notice?: string;
@@ -76,11 +77,11 @@ function pageComponent(page: SessionPage, tui: Host[0], theme: Host[1], kb: Host
       const stamp = page.updatedAt === undefined ? "Not loaded" : `Updated ${relativeTime(new Date(page.updatedAt).toISOString(), now)} · snapshot`;
       const status = loading ?? page.notice;
       const actionHints = loading ? "Tab / ← → switch tabs · ↑↓ navigate · Esc cancel loading" : page.actions.map((action) => ({
-        "Show more": "m More", "Pinned only": "p Pinned only", "All recent": "p All recent", "Refresh": "r Refresh", "Coverage details": "c Coverage", "Close": "Esc Close",
+        "Show more": "m More", "Pinned only": "p Pinned only", "All recent": "p All recent", "Refresh": "r Refresh", "Discovery details": "c Discovery details", "Close": "Esc Close",
       })[action] ?? action).join(" · ");
       const header = [tabs, terminalText(page.summary), terminalText(height < 8 ? status ?? stamp : stamp)];
       if (status && height >= 8) header.push(terminalText(status));
-      if (page.coverage.length && height >= 12) header.push(theme.fg("muted", `${page.coverage.length} coverage notes · c details`));
+      if (page.warnings.length && height >= 12) header.push(theme.fg("warning", `${page.warnings.length} scan warning${page.warnings.length === 1 ? "" : "s"}${loading ? "" : " · c details"}`));
       const compactHints = loading ? "Tab switch · Esc cancel" : `${page.actions.includes("Show more") ? "m " : ""}${page.tab === "Recent" ? "p " : ""}r c Esc`;
       const footer = new Text(height < 10 ? compactHints : actionHints, 0, 0).render(width).slice(0, Math.max(1, height - header.length - 2)).map((line) => theme.fg("muted", line));
       if (height >= 10 && !loading) footer.push(theme.fg("dim", "Tab / ← → tabs · ↑↓ navigate · Enter details"));
@@ -106,7 +107,7 @@ function pageComponent(page: SessionPage, tui: Host[0], theme: Host[1], kb: Host
       if ((["tab", "shift+tab", "left", "right"] as const).some((key) => matchesKey(data, key))) done(page.tab === "Running" ? "Recent" : "Running");
       else if (!loading && kb.matches(data, "tui.select.confirm")) { if (page.rows[selected]) done(page.rows[selected]!.id); }
       else if (!loading && data === "r") done("Refresh");
-      else if (!loading && data === "c") done("Coverage details");
+      else if (!loading && data === "c") done("Discovery details");
       else if (!loading && data === "m" && page.actions.includes("Show more")) done("Show more");
       else if (!loading && data === "p" && page.tab === "Recent") done(page.actions.includes("Pinned only") ? "Pinned only" : "All recent");
       else {
@@ -134,7 +135,7 @@ export async function selectSessionPage(ctx: ExtensionCommandContext, page: Sess
     page.tab === "Running" ? "[Running]  Recent" : "Running  [Recent]", page.summary,
     page.updatedAt === undefined ? "Not loaded" : `Updated ${relativeTime(new Date(page.updatedAt).toISOString(), page.now)} · snapshot`,
     ...(page.notice ? [page.notice] : []),
-    ...(page.coverage.length ? [`${page.coverage.length} coverage notes · Coverage details`] : []),
+    ...(page.warnings.length ? [`${page.warnings.length} scan warning${page.warnings.length === 1 ? "" : "s"} · Discovery details`] : []),
     ...(labels.length ? [] : [page.empty]),
   ].map(terminalText).join("\n"), [...labels, ...page.actions, page.tab === "Running" ? "Recent" : "Running"]);
   const row = page.rows[labels.indexOf(choice ?? "")];
@@ -180,24 +181,31 @@ export async function loadSessionPage<T>(ctx: ExtensionCommandContext, page: Ses
   return run();
 }
 
-export async function showCoverage(ctx: ExtensionCommandContext, notes: string[]): Promise<void> {
-  const text = ["Coverage details", ...notes.map(terminalText), "Use /resume for search, Current Folder / All, and resuming."].join("\n\n");
-  if (ctx.mode !== "tui") { await ctx.ui.select(text, ["Back"]); return; }
+export async function showDiscoveryDetails(ctx: ExtensionCommandContext, page: SessionPage): Promise<void> {
+  const title = `${page.tab} · Discovery details`;
+  const text = discoveryText(page);
+  if (ctx.mode !== "tui") { await ctx.ui.select(`${title}\n\n${text}`, ["Back"]); return; }
   await ctx.ui.custom<void>((tui, theme, kb, done) => {
     let offset = 0;
     let maximum = 0;
+    let capacity = 1;
     return {
       render(width) {
-        const capacity = Math.max(1, (tui.terminal?.rows ?? 24) - 6);
+        capacity = Math.max(1, (tui.terminal?.rows ?? 24) - 6);
         const lines = new Text(text, 0, 0).render(width);
         maximum = Math.max(0, lines.length - capacity); offset = Math.min(offset, maximum);
-        return [theme.fg("accent", "Coverage"), ...lines.slice(offset, offset + capacity), "↑↓ scroll · Esc / Enter back"].map((line) => truncateToWidth(line, width));
+        const position = maximum ? ` · ${offset + 1}-${Math.min(offset + capacity, lines.length)}/${lines.length}` : "";
+        const headings = ["Scan results", "Latest attempt", "What to do", `How ${page.tab} works`];
+        const body = lines.slice(offset, offset + capacity).map((line) => headings.includes(line.trim()) ? theme.fg("accent", line) : line);
+        return [theme.fg("accent", title), ...body, `Esc / Enter back · ↑↓ scroll${position}`].map((line) => truncateToWidth(line, width));
       },
       invalidate() {},
       handleInput(data) {
-        if (kb.matches(data, "tui.select.cancel") || kb.matches(data, "tui.select.confirm")) done();
+        if (kb.matches(data, "tui.select.cancel") || kb.matches(data, "tui.select.confirm")) { done(); return; }
         if (kb.matches(data, "tui.select.up")) offset = Math.max(0, offset - 1);
         if (kb.matches(data, "tui.select.down")) offset = Math.min(maximum, offset + 1);
+        if (kb.matches(data, "tui.select.pageUp")) offset = Math.max(0, offset - capacity);
+        if (kb.matches(data, "tui.select.pageDown")) offset = Math.min(maximum, offset + capacity);
         tui.requestRender();
       },
     };

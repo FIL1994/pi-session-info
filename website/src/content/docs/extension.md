@@ -31,8 +31,11 @@ Search, Current Folder / All filtering, and resuming remain in native **`/resume
 
 Tabs, counts, snapshot age and actions stay visible while rows scroll. Wide
 terminals show aligned project/name/status-or-age columns; narrow terminals
-prioritize names. **c** opens scrollable coverage details instead of repeating
-lengthy warnings in the main view.
+prioritize names. **c** opens **Discovery details**, with scan results and next
+steps first, followed by help specific to Running or Recent. Only reported scan
+issues contribute to the overview's warning count; general limitations do not.
+No warnings does not guarantee every session was found. Use **↑↓** or
+**Page Up / Down** to scroll details and **Escape / Enter** to go back.
 
 Use **↑↓** / **Page Up / Down** to navigate, **Enter** for details, **r** to
 refresh, **m** for more history, **p** for pinned-only Recent, and **Escape** to

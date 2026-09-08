@@ -1,6 +1,9 @@
 import { readdirSync, readFileSync, readlinkSync, statSync } from "node:fs";
 import type { Overview } from "./core/types";
 
+/** General limitation, not an error encountered by an individual scan. */
+export const PROCESS_DISCOVERY_LIMITATION = "Process-only discovery recognizes exact 'pi' titles; unconnected Node launchers and in-process agents may be omitted.";
+
 /** Conservative Linux fallback: only exact Pi process titles, never argv/env. */
 export function discoverSessions(procRoot = "/proc", platform = process.platform): Overview {
   if (platform !== "linux") throw new Error("Process discovery currently supports Linux only.");
@@ -8,7 +11,7 @@ export function discoverSessions(procRoot = "/proc", platform = process.platform
     schemaVersion: 1,
     source: "live",
     sessions: [],
-    warnings: ["Process-only discovery recognizes exact 'pi' titles; unconnected Node launchers and in-process agents may be omitted."],
+    warnings: [PROCESS_DISCOVERY_LIMITATION],
   };
   let denied = 0;
   for (const pid of readdirSync(procRoot).filter((entry) => /^\d+$/.test(entry))) {

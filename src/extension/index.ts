@@ -6,7 +6,8 @@ import { formatDetails, projectLabel, relativeTime, statusLabel, terminalText } 
 import { registerLifecycle } from "./lifecycle";
 import { readHistory, type HistorySnapshot } from "../history/reader";
 import { recentSessions, savedDetails } from "../history/recent";
-import { loadSessionPage, selectSessionPage, showCoverage, type LoadResult, type SessionPage, type SessionsTab } from "./picker";
+import { loadSessionPage, selectSessionPage, showDiscoveryDetails, type LoadResult, type SessionPage, type SessionsTab } from "./picker";
+import { scanWarnings } from "./discovery";
 import { createPinStore, type PinStore } from "../pins";
 
 const RECENT_INITIAL_LIMIT = 15;
@@ -86,12 +87,9 @@ export function registerSessionsCommand(pi: ExtensionAPI, dependencies: Sessions
               id: `saved:${row.sessionId}`, project: projectLabel(row, recent), name: row.name ?? row.sessionId,
               pinned: isPinned(row.sessionId), savedAt: row.modifiedAt, meta: `saved ${relativeTime(row.modifiedAt, now)}`,
             })),
-            actions: [...(tab === "Recent" ? [...(filtered.length > limit ? ["Show more"] : []), pinnedOnly ? "All recent" : "Pinned only"] : []), "Refresh", "Coverage details", "Close"],
-            coverage: tab === "Running" ? [...overview.warnings,
-              "Not connected = process only. Load this extension in that session, then /reload.",
-              "Status covers the Pi loop, not independent background agents. Stale reports retain last observed activity."]
-              : [...recent.warnings, "Newest saved files first; exact matched running sessions are excluded. Saved age never implies idle.",
-                ...(pinReadFailed ? ["Some pin metadata could not be read; pinned coverage may be incomplete."] : [])],
+            actions: [...(tab === "Recent" ? [...(filtered.length > limit ? ["Show more"] : []), pinnedOnly ? "All recent" : "Pinned only"] : []), "Refresh", "Discovery details", "Close"],
+            warnings: scanWarnings(tab === "Running" ? overview.warnings : [...recent.warnings,
+              ...(pinReadFailed ? ["Some favorites could not be read. Check the private pins directory; the pinned list may be incomplete."] : [])]),
             empty: tab === "Running" ? "No running Pi sessions found." : !history ? "Saved sessions not loaded. Refresh to retry."
               : pinnedOnly ? "No pinned sessions available in this history snapshot." : "No recent saved sessions found.",
             ...(updated[tab] !== undefined ? { updatedAt: updated[tab] } : {}),
@@ -140,7 +138,7 @@ export function registerSessionsCommand(pi: ExtensionAPI, dependencies: Sessions
             // Do not automatically retry a previously cancelled/failed scan.
             refresh = updated[tab] === undefined && !notices[tab];
           } else if (choice === "Refresh") refresh = true;
-          else if (choice === "Coverage details") await showCoverage(ctx, page.coverage);
+          else if (choice === "Discovery details") await showDiscoveryDetails(ctx, page);
           else if (choice === "Pinned only" || choice === "All recent") {
             pinnedOnly = choice === "Pinned only"; limit = RECENT_INITIAL_LIMIT; delete selected.Recent;
           } else if (choice === "Show more") {
