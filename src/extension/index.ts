@@ -89,7 +89,7 @@ export function registerSessionsCommand(pi: ExtensionAPI, dependencies: Sessions
                     id: `live:${row.instanceId}`,
                     project: projectLabel(row, overview),
                     name: row.name ?? `PID ${row.pid}`,
-                    meta: `${statusLabel(row)} · ${row.model ?? ""}${row.parentSessionFile ? " · derived" : " · ancestry unknown"}${row.pid === self ? " (this session)" : ""}`,
+                    meta: `${statusLabel(row)} · ${row.model ?? ""}${row.parentSessionFile ? " · derived" : ""}${row.pid === self ? " (this session)" : ""}`,
                     pid: `PID ${row.pid}`,
                   }))
                 : saved.map((row) => ({
@@ -97,7 +97,7 @@ export function registerSessionsCommand(pi: ExtensionAPI, dependencies: Sessions
                     project: projectLabel(row, recent),
                     name: row.name ?? row.sessionId,
                     savedAt: row.modifiedAt,
-                    meta: `saved ${relativeTime(row.modifiedAt, now)} · ${row.parentSessionFile ? "derived" : "ancestry unknown"}`,
+                    meta: `saved ${relativeTime(row.modifiedAt, now)}${row.parentSessionFile ? " · derived" : ""}`,
                   })),
             actions: [
               ...(tab === "Recent" ? (recent.sessions.length > limit ? ["Show more"] : []) : []),
