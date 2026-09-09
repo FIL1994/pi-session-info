@@ -12,6 +12,17 @@ only. No automatic installation or network calls. Uninstrumented Node launchers 
 
 ## Pi extension
 
+The extension also registers the agent-callable `list_pi_sessions` tool. Its
+default scope is running (no history scan); `scope` accepts `running`, `recent`,
+or `both`. `groupByCwd`, `limit` (maximum 100), and `offset` (up to 10,000) are supported;
+`nextOffset` is null on the final page. Results retain
+session identity and provenance; saved metadata never implies stopped or idle
+state. Responses include bounded counts, `historyDirectories`, page
+`projectDirectories`, an always-incomplete `coverage` object, and warnings;
+discovery can be partial. Grouping is by exact cwd on the returned page, and
+each tool call performs a fresh scan. Use cwd as supplied for repository auditing;
+it is not normalized to a git root.
+
 From this checkout, test in a new Pi session:
 
 ```sh

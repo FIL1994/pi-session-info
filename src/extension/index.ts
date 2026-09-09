@@ -16,6 +16,7 @@ import {
   type SessionsTab,
 } from "./picker";
 import { scanWarnings } from "./discovery";
+import { registerListPiSessionsTool } from "./tool";
 
 const RECENT_INITIAL_LIMIT = 15;
 
@@ -28,6 +29,7 @@ export interface SessionsDeps {
 
 export default function sessionInfo(pi: ExtensionAPI) {
   registerLifecycle(pi);
+  registerListPiSessionsTool(pi);
   registerSessionsCommand(pi);
 }
 

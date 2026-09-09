@@ -60,8 +60,9 @@ shutdown cannot race a pending asynchronous rename. The remaining plan describes
 the full target architecture and acceptance gates.
 
 `/sessions` uses the shared reconciled inventory and metadata-only detail picker;
-M4 can extend details with saved history. Keep slash commands user-facing; no
-agent tool is needed. Test command registration, UI dismissal, no-UI mode, errors,
+M4 can extend details with saved history. Keep slash commands user-facing. The
+agent-callable `list_pi_sessions` tool is metadata-only and shares the live/history
+readers. Test command and tool registration, UI dismissal, no-UI mode, errors,
 and multiple same-cwd instances. Do not install into user settings without permission.
 
 ## 1. Goal and scope
