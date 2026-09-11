@@ -10,7 +10,7 @@ level, and observed activity. Other processes say **Not connected**, rather than
 repeating empty diagnostic columns. The Recent tab reads saved-session metadata
 only. No automatic installation or network calls. Uninstrumented Node launchers may be omitted.
 
-CLI text marks **this process** only when its process birth identity matches;
+CLI text marks **this process** only when both its PID and process birth identity match;
 PID equality alone is not treated as session identity.
 
 ## Pi extension

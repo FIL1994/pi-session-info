@@ -95,7 +95,7 @@ export function registerSessionsCommand(pi: ExtensionAPI, dependencies: Sessions
                     id: `live:${row.instanceId}`,
                     project: projectLabel(row, overview),
                     name: row.name ?? `PID ${row.pid}`,
-                    meta: `${statusLabel(row)} · ${row.model ?? ""}${row.parentSessionFile ? " · derived" : ""}${row.processIdentity && row.processIdentity === selfIdentity ? " (this process)" : ""}`,
+                    meta: `${statusLabel(row)} · ${row.model ?? ""}${row.parentSessionFile ? " · derived" : ""}${row.pid === self && row.processIdentity && row.processIdentity === selfIdentity ? " (this process)" : ""}`,
                     pid: `PID ${row.pid}`,
                   }))
                 : saved.map((row) => ({

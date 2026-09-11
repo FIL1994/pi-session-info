@@ -62,7 +62,7 @@ export function projectLabel(
 
 export function formatOverview(
   overview: Overview,
-  options: { currentProcessIdentity?: string | null; now?: number } = {},
+  options: { currentPid?: number; currentProcessIdentity?: string | null; now?: number } = {},
 ): string {
   const generatedAt = overview.generatedAt ? Date.parse(overview.generatedAt) : Number.NaN;
   const now = options.now ?? (Number.isFinite(generatedAt) ? generatedAt : Date.now());
@@ -77,7 +77,9 @@ export function formatOverview(
     const heading = [
       projectLabel(row, overview),
       `PID ${row.pid}`,
-      row.processIdentity && row.processIdentity === options.currentProcessIdentity
+      row.pid === options.currentPid &&
+      row.processIdentity &&
+      row.processIdentity === options.currentProcessIdentity
         ? "this process"
         : "",
     ]

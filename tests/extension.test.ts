@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
-import { registerSessionsCommand } from "../src/extension/index";
+import { registerSessionsCommand, type SessionsDeps } from "../src/extension/index";
 import { demoOverview } from "../src/demo";
 import type { HistorySnapshot } from "../src/history/reader";
 
@@ -8,6 +8,7 @@ function setup(
   choices: (string | undefined)[] = ["Close"],
   fail = false,
   history: () => Promise<HistorySnapshot> = async () => ({ sessions: [], warnings: [] }),
+  dependencies: SessionsDeps = {},
 ) {
   let handler!: (args: string, ctx: ExtensionCommandContext) => Promise<void>;
   const dialogs: { title: string; choices: string[] }[] = [];
@@ -27,6 +28,7 @@ function setup(
       if (fail) throw Error("fixture error");
       return demoOverview();
     },
+    ...dependencies,
   });
   const ctx = {
     hasUI: true,
@@ -88,6 +90,35 @@ test("Recent starts at fifteen, Show more adds ten, and history is cached until 
   expect(app.dialogs[3]?.title).toContain("25 of 25");
   expect(app.dialogs[3]?.choices).not.toContain("Show more");
   expect(app.dialogs[4]?.title).toContain("[Running]");
+});
+
+test("this process requires matching PID and birth identity", async () => {
+  const base = demoOverview();
+  const sessions = [
+    { pid: 10, processIdentity: "boot:123" },
+    { pid: 20, processIdentity: "boot:123" },
+    { pid: 10, processIdentity: "boot:456" },
+    { pid: 10 },
+  ].map((identity, i) => ({
+    ...base.sessions[0]!,
+    ...identity,
+    instanceId: `fixture-${i}`,
+    name: `Task ${i}`,
+  }));
+  for (const processIdentity of ["boot:123", null]) {
+    const app = setup(["Close"], false, undefined, {
+      pid: 10,
+      processIdentity,
+      overview: () => ({ ...base, sessions }),
+    });
+    await app.run();
+    const rows = app.dialogs[0]!.choices;
+    expect(rows.filter((row) => row.includes("this process"))).toHaveLength(
+      processIdentity ? 1 : 0,
+    );
+    if (processIdentity) expect(rows[0]).toContain("this process");
+    expect(app.notifications).toEqual([]);
+  }
 });
 
 test("Running does not read history", async () => {

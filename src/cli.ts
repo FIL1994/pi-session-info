@@ -14,6 +14,7 @@ export interface CommandResult {
 export interface CliDeps {
   overview?: () => Overview;
   now?: () => number;
+  pid?: number;
   processIdentity?: string | null;
 }
 
@@ -49,13 +50,14 @@ export function runCli(args: string[], deps: CliDeps = {}): CommandResult {
               ? { now: () => snapshotNow }
               : { registryDir: values["registry-dir"], now: () => snapshotNow },
           );
+    const currentPid = deps.pid ?? process.pid;
     const currentProcessIdentity =
-      deps.processIdentity === undefined ? readProcessIdentity(process.pid) : deps.processIdentity;
+      deps.processIdentity === undefined ? readProcessIdentity(currentPid) : deps.processIdentity;
     return {
       code: 0,
       stdout: values.json
         ? JSON.stringify(overview, null, 2)
-        : formatOverview(overview, { currentProcessIdentity, now: snapshotNow }),
+        : formatOverview(overview, { currentPid, currentProcessIdentity, now: snapshotNow }),
       stderr: "",
     };
   } catch (error) {

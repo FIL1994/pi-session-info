@@ -116,7 +116,10 @@ test("presentation is compact, escaped, and marks this process", () => {
     () => "boot:123",
     now,
   );
-  const text = formatOverview(result, { currentProcessIdentity: record.processIdentity });
+  const text = formatOverview(result, {
+    currentPid: record.pid,
+    currentProcessIdentity: record.processIdentity,
+  });
   expect(text).toContain("project · PID 10 · this process");
   expect(text).toContain("test-model");
   expect(text).toContain("name\\u000a\\u001b");

@@ -46,6 +46,7 @@ test("text output uses the injected snapshot clock and process identity", () => 
   const base = demoOverview();
   const result = runCli([], {
     now: () => now,
+    pid: base.sessions[0]!.pid,
     processIdentity: "boot:current",
     overview: () => ({
       ...base,
@@ -62,6 +63,11 @@ test("text output uses the injected snapshot clock and process identity", () => 
           processIdentity: "boot:other",
           activityAt: new Date(now - 120_000).toISOString(),
         },
+        {
+          ...base.sessions[0]!,
+          pid: 4200,
+          processIdentity: "boot:current",
+        },
       ],
     }),
   });
@@ -69,4 +75,6 @@ test("text output uses the injected snapshot clock and process identity", () => 
   expect(result.stdout).toContain("last observed change: 2 minutes ago");
   expect(result.stdout).toContain("PID 4101 · this process");
   expect(result.stdout).toContain("PID 4101\n");
+  expect(result.stdout).toContain("PID 4200\n");
+  expect(result.stdout.match(/this process/g)).toHaveLength(1);
 });
