@@ -10,18 +10,36 @@ level, and observed activity. Other processes say **Not connected**, rather than
 repeating empty diagnostic columns. The Recent tab reads saved-session metadata
 only. No automatic installation or network calls. Uninstrumented Node launchers may be omitted.
 
+CLI text marks **this process** only when its process birth identity matches;
+PID equality alone is not treated as session identity.
+
 ## Pi extension
 
 The extension also registers the agent-callable `list_pi_sessions` tool. Its
 default scope is running (no history scan); `scope` accepts `running`, `recent`,
-or `both`. `groupByCwd`, `limit` (maximum 100), and `offset` (up to 10,000) are supported;
-`nextOffset` is null on the final page. Results retain
-session identity and provenance; saved metadata never implies stopped or idle
-state. Responses include bounded counts, `historyDirectories`, page
-`projectDirectories`, an always-incomplete `coverage` object, and warnings;
-discovery can be partial. Grouping is by exact cwd on the returned page, and
-each tool call performs a fresh scan. Use cwd as supplied for repository auditing;
-it is not normalized to a git root.
+or `both`. `groupByCwd`, `limit` (maximum 100), and `offset` (up to 10,000) are
+supported, as are exact `cwd`, `sessionId`, and live `instanceId` filters.
+Filters are applied before pagination and grouping; cwd is not normalized to a
+git root and does not match descendants. `nextOffset` is null on the final
+page. Results retain session identity and provenance; saved metadata never
+implies stopped or idle state. Responses include bounded counts,
+`historyDirectories`, page `projectDirectories`, an always-incomplete
+`coverage` object, and warnings; discovery can be partial. Grouping is by
+exact cwd on the returned page, and each tool call performs a fresh scan.
+
+Tool output defaults to `detail: "compact"`: running rows retain instance/session
+identity, PID, cwd, task name, provider/model/thinking, activity, evidence,
+freshness, active tool names, and `lastChangeAge`; recent rows retain saved
+session identity, cwd, task name, and `lastSavedAge` without live-status fields.
+Long session-file paths and other full-only metadata are omitted. Set
+`detail: "full"` to retain the previous complete `{ kind, session }` row shape
+and exact timestamps/paths. In compact grouped output, `groups[].sessions` are
+identity references rather than duplicate full rows; full grouped output keeps
+the previous rows for compatibility.
+
+Warnings are derived from the complete live inventory before filtering or
+pagination. A shared PID warning includes its process identity when available
+and notes that killing the PID affects every activation in that process.
 
 From this checkout, test in a new Pi session:
 

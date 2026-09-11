@@ -2,6 +2,8 @@ import { parseArgs } from "node:util";
 import { demoOverview } from "./demo";
 import { formatOverview } from "./format";
 import { liveOverview } from "./inventory";
+import { readProcessIdentity } from "./process/identity";
+import type { Overview } from "./core/types";
 
 export interface CommandResult {
   code: number;
@@ -9,7 +11,13 @@ export interface CommandResult {
   stderr: string;
 }
 
-export function runCli(args: string[]): CommandResult {
+export interface CliDeps {
+  overview?: () => Overview;
+  now?: () => number;
+  processIdentity?: string | null;
+}
+
+export function runCli(args: string[], deps: CliDeps = {}): CommandResult {
   try {
     const { values } = parseArgs({
       args,
@@ -26,18 +34,28 @@ export function runCli(args: string[]): CommandResult {
       return {
         code: 0,
         stdout:
-          "Usage: bun run start [--demo] [--json] [--registry-dir PATH]\n\nLinux process discovery with extension-published live status. --demo uses synthetic data.",
+          "Usage: bun run start [--demo] [--json] [--registry-dir PATH]\n\nLinux process discovery with extension-published live status. Text output marks the matching process as 'this process'. --demo uses synthetic data.",
         stderr: "",
       };
     }
-    const overview = values.demo
-      ? demoOverview()
-      : liveOverview(
-          values["registry-dir"] === undefined ? {} : { registryDir: values["registry-dir"] },
-        );
+    const now = deps.now ?? Date.now;
+    const snapshotNow = now();
+    const overview = deps.overview
+      ? deps.overview()
+      : values.demo
+        ? demoOverview()
+        : liveOverview(
+            values["registry-dir"] === undefined
+              ? { now: () => snapshotNow }
+              : { registryDir: values["registry-dir"], now: () => snapshotNow },
+          );
+    const currentProcessIdentity =
+      deps.processIdentity === undefined ? readProcessIdentity(process.pid) : deps.processIdentity;
     return {
       code: 0,
-      stdout: values.json ? JSON.stringify(overview, null, 2) : formatOverview(overview),
+      stdout: values.json
+        ? JSON.stringify(overview, null, 2)
+        : formatOverview(overview, { currentProcessIdentity, now: snapshotNow }),
       stderr: "",
     };
   } catch (error) {
