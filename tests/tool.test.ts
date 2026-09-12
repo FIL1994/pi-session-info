@@ -2,11 +2,15 @@ import { expect, test } from "bun:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { registerListPiSessionsTool } from "../src/extension/tool";
 import { demoOverview } from "../src/demo";
+import type { Overview } from "../src/core/types";
 
-function setup(history?: (...args: any[]) => Promise<any>) {
+function setup(
+  history?: (...args: any[]) => Promise<any>,
+  overview: Overview = { ...demoOverview(), sessions: demoOverview().sessions.slice(0, 1) },
+) {
   let tool: any;
   registerListPiSessionsTool({ registerTool: (value: unknown) => (tool = value) } as ExtensionAPI, {
-    overview: () => ({ ...demoOverview(), sessions: demoOverview().sessions.slice(0, 1) }),
+    overview: () => overview,
     history: history ?? (async () => ({ sessions: [], warnings: [] })),
     now: () => 0,
   });
@@ -111,4 +115,118 @@ test("cancellation during history does not return partial results", async () => 
   await expect(
     tool.execute("id", { scope: "both" }, controller.signal, undefined, ctx),
   ).rejects.toThrow();
+});
+
+test("exact filters apply before pagination and page grouping", async () => {
+  const base = demoOverview();
+  const overview: Overview = {
+    ...base,
+    sessions: [
+      {
+        ...base.sessions[0]!,
+        instanceId: "first",
+        sessionId: "one",
+        cwd: "/same",
+        processIdentity: "boot:shared",
+        pid: 4101,
+      },
+      {
+        ...base.sessions[0]!,
+        instanceId: "second",
+        sessionId: "two",
+        cwd: "/same",
+        processIdentity: "boot:shared",
+        pid: 4101,
+      },
+      {
+        ...base.sessions[0]!,
+        instanceId: "third",
+        sessionId: "three",
+        cwd: "/other",
+        processIdentity: "boot:shared",
+        pid: 4101,
+      },
+    ],
+  };
+  const result = (
+    await setup(undefined, overview).execute(
+      "id",
+      { cwd: "/same", groupByCwd: true, limit: 1, offset: 1 },
+      undefined,
+      undefined,
+      ctx,
+    )
+  ).details;
+  expect(result.counts).toEqual({ total: 2, offset: 1, returned: 1 });
+  expect(result.sessions[0].session.sessionId).toBe("two");
+  expect(result.groups).toEqual([
+    {
+      cwd: "/same",
+      sessions: [{ kind: "running", instanceId: "second", sessionId: "two", pid: 4101 }],
+    },
+  ]);
+  expect(result.warnings.filter((warning: string) => warning.includes("PID 4101"))).toHaveLength(1);
+  expect(result.warnings.some((warning: string) => warning.includes("boot:shared"))).toBe(true);
+});
+
+test("compact and full projections keep live identity and separate recent metadata", async () => {
+  const base = demoOverview();
+  const live: Overview = {
+    ...base,
+    sessions: [
+      {
+        ...base.sessions[0]!,
+        instanceId: "live-instance",
+        processIdentity: "boot:1",
+        sessionFile: "/very/long/private/path/session.jsonl",
+        sessionId: null,
+        activityAt: new Date(0).toISOString(),
+        provider: "provider",
+      },
+    ],
+  };
+  const history = async () => ({
+    sessions: [
+      {
+        sessionId: "saved",
+        sessionFile: "/very/long/private/path/saved.jsonl",
+        cwd: "/saved",
+        name: "Saved task",
+        modifiedAt: new Date(0).toISOString(),
+      },
+    ],
+    warnings: [],
+  });
+  const compact = (
+    await setup(history, live).execute("id", { scope: "both" }, undefined, undefined, ctx)
+  ).details;
+  expect(compact.detail).toBe("compact");
+  expect(compact.sessions[0].session).toMatchObject({
+    instanceId: "live-instance",
+    sessionId: null,
+    provider: "provider",
+    lastChangeAge: "just now",
+  });
+  expect(compact.sessions[0].session.sessionFile).toBeUndefined();
+  const recent = compact.sessions.find((row: any) => row.kind === "recent");
+  expect(recent.session).toEqual({
+    sessionId: "saved",
+    cwd: "/saved",
+    name: "Saved task",
+    lastSavedAge: "just now",
+  });
+  expect(recent.session.activity).toBeUndefined();
+
+  const full = (
+    await setup(history, live).execute(
+      "id",
+      { scope: "both", detail: "full" },
+      undefined,
+      undefined,
+      ctx,
+    )
+  ).details;
+  expect(full.detail).toBe("full");
+  expect(full.sessions[0].session.sessionFile).toBe("/very/long/private/path/session.jsonl");
+  expect(full.sessions[0].session.activityAt).toBe(new Date(0).toISOString());
 });

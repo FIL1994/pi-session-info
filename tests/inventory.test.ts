@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { RegistryRecord } from "../src/core/registry-schema";
 import type { Overview } from "../src/core/types";
-import { liveOverview, reconcile } from "../src/inventory";
+import { liveOverview, reconcile, sharedProcessWarnings } from "../src/inventory";
 import { writeRecord } from "../src/registry/store";
 import { formatDetails, formatOverview } from "../src/format";
 
@@ -74,6 +74,20 @@ test("exact mapping replaces fallback and includes instrumented Node launchers",
   expect(result.sessions[0]?.activeTools).toEqual(["read"]);
 });
 
+test("shared PID warnings cover every activation and are emitted once", () => {
+  const result = reconcile(
+    fallback,
+    [record, { ...record, instanceId: "other", sessionId: "session-b" }],
+    () => "boot:123",
+    now,
+  );
+  const warnings = result.warnings.filter((warning) => warning.includes("PID 10"));
+  expect(warnings).toEqual([
+    "PID 10 (process identity: boot:123) has 2 active Pi activations; killing this PID affects all of them.",
+  ]);
+  expect(sharedProcessWarnings(result.sessions)).toEqual(warnings);
+});
+
 test("PID reuse and dead processes never inherit metadata", () => {
   for (const identity of [null, "boot:456", "new-boot:123"]) {
     const result = reconcile(fallback, [record], () => identity, now);
@@ -95,15 +109,18 @@ test("stale and future heartbeats preserve last observation, never imply idle", 
   }
 });
 
-test("presentation is compact, escaped, and marks this session", () => {
+test("presentation is compact, escaped, and marks this process", () => {
   const result = reconcile(
     fallback,
     [{ ...record, sessionName: "name\n\x1b[31m" }],
     () => "boot:123",
     now,
   );
-  const text = formatOverview(result, { currentPid: 10 });
-  expect(text).toContain("project · PID 10 · this session");
+  const text = formatOverview(result, {
+    currentPid: record.pid,
+    currentProcessIdentity: record.processIdentity,
+  });
+  expect(text).toContain("project · PID 10 · this process");
   expect(text).toContain("test-model");
   expect(text).toContain("name\\u000a\\u001b");
   expect(text).not.toContain("unknown");

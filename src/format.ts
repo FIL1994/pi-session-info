@@ -27,6 +27,13 @@ export function relativeTime(value: string, now: number): string {
   return time > now ? `in ${label}` : `${label} ago`;
 }
 
+/** Return an honest age for observed changes; unavailable dates stay unknown. */
+export function observedChangeAge(value: string | null | undefined, now: number): string | null {
+  if (!value) return null;
+  const time = Date.parse(value);
+  return Number.isFinite(time) && Number.isFinite(now) ? relativeTime(value, now) : null;
+}
+
 export function statusLabel(row: SessionRow): string {
   if (row.evidence === "unmatched") return "Not connected";
   const labels = {
@@ -53,7 +60,12 @@ export function projectLabel(
   return collision ? row.cwd : name;
 }
 
-export function formatOverview(overview: Overview, options: { currentPid?: number } = {}): string {
+export function formatOverview(
+  overview: Overview,
+  options: { currentPid?: number; currentProcessIdentity?: string | null; now?: number } = {},
+): string {
+  const generatedAt = overview.generatedAt ? Date.parse(overview.generatedAt) : Number.NaN;
+  const now = options.now ?? (Number.isFinite(generatedAt) ? generatedAt : Date.now());
   const connected = overview.sessions.filter(
     (row) => row.evidence === "extension" && row.freshness === "fresh",
   ).length;
@@ -61,10 +73,15 @@ export function formatOverview(overview: Overview, options: { currentPid?: numbe
     (row) => row.evidence === "extension" && row.freshness !== "fresh",
   ).length;
   const rows = overview.sessions.map((row) => {
+    const changeAge = observedChangeAge(row.activityAt, now);
     const heading = [
       projectLabel(row, overview),
       `PID ${row.pid}`,
-      row.pid === options.currentPid ? "this session" : "",
+      row.pid === options.currentPid &&
+      row.processIdentity &&
+      row.processIdentity === options.currentProcessIdentity
+        ? "this process"
+        : "",
     ]
       .filter(Boolean)
       .map(terminalText)
@@ -75,6 +92,7 @@ export function formatOverview(overview: Overview, options: { currentPid?: numbe
       row.model,
       row.thinking ? `thinking: ${row.thinking}` : null,
       row.activeTools.length ? row.activeTools.join(", ") : null,
+      changeAge ? `last observed change: ${changeAge}` : null,
     ]
       .filter(Boolean)
       .map((value) => terminalText(value!))

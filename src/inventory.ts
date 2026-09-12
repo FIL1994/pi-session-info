@@ -4,6 +4,31 @@ import { discoverSessions } from "./discover";
 import { readProcessIdentity } from "./process/identity";
 import { readRecords, resolveRegistryDir } from "./registry/store";
 
+/**
+ * A PID can contain more than one extension activation. Keep this warning
+ * about the complete live inventory so callers can safely page or filter it.
+ */
+export function sharedProcessWarnings(sessions: readonly SessionRow[]): string[] {
+  const byPid = new Map<number, SessionRow[]>();
+  for (const session of sessions) {
+    const rows = byPid.get(session.pid) ?? [];
+    rows.push(session);
+    byPid.set(session.pid, rows);
+  }
+  const warnings: string[] = [];
+  for (const [pid, rows] of byPid) {
+    if (rows.length < 2) continue;
+    const identities = [
+      ...new Set(rows.flatMap((row) => (row.processIdentity ? [row.processIdentity] : []))),
+    ];
+    const identity = identities.length ? ` (process identity: ${identities.join(", ")})` : "";
+    warnings.push(
+      `PID ${pid}${identity} has ${rows.length} active Pi activations; killing this PID affects all of them.`,
+    );
+  }
+  return warnings;
+}
+
 /** Exact birth-identity matches only. Neither cwd nor saved history identifies a live session. */
 export function reconcile(
   fallback: Overview,
@@ -47,7 +72,13 @@ export function reconcile(
     (a, b) =>
       a.cwd.localeCompare(b.cwd) || a.pid - b.pid || a.instanceId.localeCompare(b.instanceId),
   );
-  return { ...fallback, sessions, warnings, generatedAt: new Date(now).toISOString() };
+  warnings.push(...sharedProcessWarnings(sessions));
+  return {
+    ...fallback,
+    sessions,
+    warnings: [...new Set(warnings)],
+    generatedAt: new Date(now).toISOString(),
+  };
 }
 
 export function liveOverview(

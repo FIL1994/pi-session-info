@@ -17,12 +17,14 @@ import {
 } from "./picker";
 import { scanWarnings } from "./discovery";
 import { registerListPiSessionsTool } from "./tool";
+import { readProcessIdentity } from "../process/identity";
 
 const RECENT_INITIAL_LIMIT = 15;
 
 export interface SessionsDeps {
   overview?: typeof liveOverview;
   pid?: number;
+  processIdentity?: string | null;
   now?: () => number;
   history?: typeof readHistory;
 }
@@ -36,6 +38,10 @@ export default function sessionInfo(pi: ExtensionAPI) {
 export function registerSessionsCommand(pi: ExtensionAPI, dependencies: SessionsDeps = {}) {
   const inventory = dependencies.overview ?? liveOverview;
   const self = dependencies.pid ?? process.pid;
+  const selfIdentity =
+    dependencies.processIdentity === undefined
+      ? readProcessIdentity(self)
+      : dependencies.processIdentity;
   const clock = dependencies.now ?? Date.now;
   const historyReader = dependencies.history ?? readHistory;
   async function showDetails(ctx: ExtensionCommandContext, title: string) {
@@ -89,7 +95,7 @@ export function registerSessionsCommand(pi: ExtensionAPI, dependencies: Sessions
                     id: `live:${row.instanceId}`,
                     project: projectLabel(row, overview),
                     name: row.name ?? `PID ${row.pid}`,
-                    meta: `${statusLabel(row)} · ${row.model ?? ""}${row.parentSessionFile ? " · derived" : ""}${row.pid === self ? " (this session)" : ""}`,
+                    meta: `${statusLabel(row)} · ${row.model ?? ""}${row.parentSessionFile ? " · derived" : ""}${row.pid === self && row.processIdentity && row.processIdentity === selfIdentity ? " (this process)" : ""}`,
                     pid: `PID ${row.pid}`,
                   }))
                 : saved.map((row) => ({
