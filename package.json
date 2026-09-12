@@ -1,6 +1,6 @@
 {
   "name": "pi-session-info",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Local visibility into running and recent Pi sessions",
   "type": "module",
